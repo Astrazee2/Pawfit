@@ -1,4 +1,3 @@
-```markdown
 # 🐾 PawFit: An Interactive 3D Virtual Fitting and E-Commerce Platform for Dog Apparel
 
 ![Mapúa University](https://img.shields.io/badge/Mapúa%20University-School%20of%20Information%20Technology-red)
