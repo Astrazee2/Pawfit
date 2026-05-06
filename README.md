@@ -176,21 +176,6 @@ This project is developed as an undergraduate thesis at **Mapúa University — 
 
 ---
 
-## 👥 Development Team
-
-| Name | Role |
-|---|---|
-| Ricci Ayn D. Cordero | Developer |
-| Lance Nicolai O. Javier | Developer |
-| Stephanie M. Zamoras | Developer |
-
-**Thesis Adviser:** Antonette D. Gabriel
-**Institution:** Mapúa University — School of Information Technology
-**Program:** Bachelor of Science in Information Technology — Enterprise Data Management
-**Academic Year:** 2025–2026
-
----
-
 ## 📄 License
 
 This project is developed for academic purposes under Mapúa University. All rights reserved by the development team.
