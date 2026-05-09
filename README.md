@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-```markdown
-=======
->>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
 # 🐾 PawFit: An Interactive 3D Virtual Fitting and E-Commerce Platform for Dog Apparel
 
 ![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
@@ -179,24 +175,6 @@ This project is developed as an undergraduate thesis at **Mapúa University — 
 
 ---
 
-<<<<<<< HEAD
-## 👥 Development Team
-
-| Name | Role |
-|---|---|
-| Ricci Ayn D. Cordero | Developer |
-| Lance Nicolai O. Javier | Developer |
-| Stephanie M. Zamoras | Developer |
-
-**Thesis Adviser:** Antonette D. Gabriel
-**Institution:** Mapúa University — School of Information Technology
-**Program:** Bachelor of Science in Information Technology — Enterprise Data Management
-**Academic Year:** 2025–2026
-
----
-
-=======
->>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
 ## 📄 License
 
 This project is developed for academic purposes only. All rights reserved by the development team.
@@ -205,8 +183,6 @@ This project is developed for academic purposes only. All rights reserved by the
 
 > *"PawFit extends the functional capacity of dog apparel platforms beyond static representation and provides interactive, system-assisted support for fit evaluation and purchase decision-making."*
 ```
-
-<<<<<<< HEAD
 🐾
 =======
 🐾
