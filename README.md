@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 ```markdown
+=======
+>>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
 # 🐾 PawFit: An Interactive 3D Virtual Fitting and E-Commerce Platform for Dog Apparel
 
 ![Mapúa University](https://img.shields.io/badge/Mapúa%20University-School%20of%20Information%20Technology-red)
@@ -177,6 +180,7 @@ This project is developed as an undergraduate thesis at **Mapúa University — 
 
 ---
 
+<<<<<<< HEAD
 ## 👥 Development Team
 
 | Name | Role |
@@ -192,6 +196,8 @@ This project is developed as an undergraduate thesis at **Mapúa University — 
 
 ---
 
+=======
+>>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
 ## 📄 License
 
 This project is developed for academic purposes under Mapúa University. All rights reserved by the development team.
@@ -201,4 +207,8 @@ This project is developed for academic purposes under Mapúa University. All rig
 > *"PawFit extends the functional capacity of dog apparel platforms beyond static representation and provides interactive, system-assisted support for fit evaluation and purchase decision-making."*
 ```
 
+<<<<<<< HEAD
 🐾
+=======
+🐾
+>>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
