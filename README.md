@@ -184,6 +184,3 @@ This project is developed for academic purposes only. All rights reserved by the
 > *"PawFit extends the functional capacity of dog apparel platforms beyond static representation and provides interactive, system-assisted support for fit evaluation and purchase decision-making."*
 ```
 🐾
-=======
-🐾
->>>>>>> b0475f56023a3d5009e0db8c8d70bcdc35d3d472
