@@ -4,18 +4,173 @@ import { useNavigate } from 'react-router';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Order } from '../types';
+import { ApparelType, Breed, Order, OrderStatus, Product, Size } from '../types';
+import { ordersAPI } from '../services/api';
 import { Package } from 'lucide-react';
+
+type BackendProduct = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  type?: string;
+  apparelType?: ApparelType;
+  breedCompatibility?: Breed[];
+  sizes?: Size[];
+  sizesAvailable?: Size[];
+  imageUrl?: string;
+  images?: string[];
+  glbAssetUrl?: string;
+  glbAsset?: string;
+};
+
+type BackendOrderItem = {
+  product?: BackendProduct | string | null;
+  size?: Size;
+  quantity?: number;
+  price?: number;
+};
+
+type BackendOrder = {
+  _id?: string;
+  id?: string;
+  orderNumber?: string;
+  createdAt?: string;
+  date?: string;
+  items?: BackendOrderItem[];
+  totalAmount?: number;
+  total?: number;
+  status?: string;
+  shippingAddress?: {
+    fullName?: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    zipCode?: string;
+    phone?: string;
+  };
+  shippingInfo?: Order['shippingInfo'];
+  message?: string;
+};
+
+const apparelTypeLabels: Record<string, ApparelType> = {
+  shirt: 'Shirt',
+  coat: 'Coat',
+  sweater: 'Sweater',
+  hoodie: 'Hoodie',
+  Shirt: 'Shirt',
+  Coat: 'Coat',
+  Sweater: 'Sweater',
+  Hoodie: 'Hoodie',
+};
+
+const normalizeProduct = (product: BackendProduct | string | null | undefined, itemPrice = 0): Product => {
+  if (!product || typeof product === 'string') {
+    return {
+      id: typeof product === 'string' ? product : '',
+      name: 'Product unavailable',
+      description: '',
+      price: itemPrice,
+      apparelType: 'Shirt',
+      breedCompatibility: [],
+      sizesAvailable: [],
+      images: [],
+    };
+  }
+
+  return {
+    id: product.id ?? product._id ?? '',
+    name: product.name ?? 'Product unavailable',
+    description: product.description ?? '',
+    price: product.price ?? itemPrice,
+    apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
+    breedCompatibility: product.breedCompatibility ?? [],
+    sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
+    images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
+    glbAsset: product.glbAsset ?? product.glbAssetUrl,
+  };
+};
+
+const normalizeStatus = (status?: string): OrderStatus => {
+  switch (status) {
+    case 'shipped':
+    case 'Shipped':
+      return 'Shipped';
+    case 'delivered':
+    case 'Delivered':
+      return 'Delivered';
+    case 'cancelled':
+    case 'Cancelled':
+      return 'Cancelled';
+    default:
+      return 'Processing';
+  }
+};
+
+const normalizeOrder = (order: BackendOrder): Order => {
+  const id = order.id ?? order._id ?? '';
+  const items = (order.items ?? []).map(item => ({
+    product: normalizeProduct(item.product, item.price ?? 0),
+    size: item.size ?? 'M',
+    quantity: item.quantity ?? 1,
+  }));
+
+  return {
+    id,
+    orderNumber: order.orderNumber ?? `#${id.slice(-6).toUpperCase()}`,
+    date: order.date ?? order.createdAt ?? new Date().toISOString(),
+    items,
+    total: order.total ?? order.totalAmount ?? items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+    status: normalizeStatus(order.status),
+    shippingInfo: order.shippingInfo ?? {
+      name: order.shippingAddress?.fullName ?? '',
+      address: [
+        order.shippingAddress?.address,
+        order.shippingAddress?.city,
+        order.shippingAddress?.province,
+        order.shippingAddress?.zipCode,
+      ].filter(Boolean).join(', '),
+      contactNumber: order.shippingAddress?.phone ?? '',
+    },
+  };
+};
 
 export function OrderHistory() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem('pawfit_orders') || '[]');
-    setOrders(savedOrders.sort((a: Order, b: Order) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-  }, []);
+    if (!isAuthenticated) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    const loadOrders = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await ordersAPI.getOrders();
+
+        if (!Array.isArray(data)) {
+          throw new Error(data?.message || 'Unable to load orders');
+        }
+
+        setOrders(data.map(normalizeOrder));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return (
@@ -33,7 +188,21 @@ export function OrderHistory() {
         Order History
       </h1>
 
-      {orders.length === 0 ? (
+      {loading ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Package className="w-12 h-12 mx-auto mb-4 text-[#C4714A]" />
+            <p className="text-[#6B5D56]">Loading orders...</p>
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <p className="text-[#8B4A4A] mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </CardContent>
+        </Card>
+      ) : orders.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
             <div className="text-8xl mb-4">🐶</div>

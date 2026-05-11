@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 export function AccountSettings() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const petProfiles = user?.petProfiles ?? [];
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -76,7 +77,7 @@ export function AccountSettings() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              You have {user?.petProfiles.length || 0} pet profile{user?.petProfiles.length !== 1 ? 's' : ''}
+              You have {petProfiles.length} pet profile{petProfiles.length !== 1 ? 's' : ''}
             </p>
             <Button variant="outline" onClick={() => navigate('/pets')}>
               Manage Pet Profiles
