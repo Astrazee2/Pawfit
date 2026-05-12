@@ -19,28 +19,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedUser = localStorage.getItem('pawfit_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (err) {
+        localStorage.removeItem('pawfit_user');
+      }
     }
   }, []);
 
 const login = async (email: string, password: string): Promise<boolean> => {
-  const data = await authAPI.login(email, password)
-  if (data.token) {
-    setUser(data.user)
-    localStorage.setItem('pawfit_user', JSON.stringify(data.user))
-    localStorage.setItem('token', data.token)
-    return true
+  try {
+    const data = await authAPI.login(email, password)
+    if (data.token) {
+      setUser(data.user)
+      localStorage.setItem('pawfit_user', JSON.stringify(data.user))
+      localStorage.setItem('token', data.token)
+      return true
+    }
+  } catch (err) {
+    return false
   }
   return false
 }
 
 const register = async (name: string, email: string, password: string): Promise<boolean> => {
-  const data = await authAPI.register(name, email, password)
-  if (data.token) {
-    setUser(data.user)
-    localStorage.setItem('pawfit_user', JSON.stringify(data.user))
-    localStorage.setItem('token', data.token)
-    return true
+  try {
+    const data = await authAPI.register(name, email, password)
+    if (data.token) {
+      setUser(data.user)
+      localStorage.setItem('pawfit_user', JSON.stringify(data.user))
+      localStorage.setItem('token', data.token)
+      return true
+    }
+  } catch (err) {
+    return false
   }
   return false
 }
@@ -48,6 +60,7 @@ const register = async (name: string, email: string, password: string): Promise<
   const logout = () => {
     setUser(null);
     localStorage.removeItem('pawfit_user');
+    localStorage.removeItem('token');
   };
 
   const updatePetProfiles = (profiles: PetProfile[]) => {

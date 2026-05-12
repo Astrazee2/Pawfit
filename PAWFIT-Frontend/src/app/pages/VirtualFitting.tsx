@@ -6,20 +6,84 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { DogAvatar3D } from '../components/DogAvatar3D';
-import { Breed, Measurements, Size, SizeRecommendation, FitConfidence } from '../types';
-import { breedSizeGuide, mockProducts } from '../data/mockData';
+import { ApparelType, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
+import { productsAPI, petsAPI } from '../services/api';
+import { getSizeRecommendation } from '../utils/sizeRecommendation';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import { RotateCcw, ZoomIn, ZoomOut, Check, AlertTriangle, Ruler as RulerIcon } from 'lucide-react';
 
+type BackendProduct = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  type?: string;
+  apparelType?: ApparelType;
+  breedCompatibility?: Breed[];
+  sizes?: Size[];
+  sizesAvailable?: Size[];
+  imageUrl?: string;
+  images?: string[];
+  glbAssetUrl?: string;
+  glbAsset?: string;
+  message?: string;
+};
+
+type BackendPet = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  breed?: Breed;
+  backLength?: number;
+  neckGirth?: number;
+  chestGirth?: number;
+  measurements?: Measurements;
+};
+
 const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+
+const apparelTypeLabels: Record<string, ApparelType> = {
+  shirt: 'Shirt',
+  coat: 'Coat',
+  sweater: 'Sweater',
+  hoodie: 'Hoodie',
+  Shirt: 'Shirt',
+  Coat: 'Coat',
+  Sweater: 'Sweater',
+  Hoodie: 'Hoodie',
+};
+
+const normalizeProduct = (product: BackendProduct): Product => ({
+  id: product.id ?? product._id ?? '',
+  name: product.name ?? 'Untitled Product',
+  description: product.description ?? '',
+  price: product.price ?? 0,
+  apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
+  breedCompatibility: product.breedCompatibility ?? [],
+  sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
+  images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
+  glbAsset: product.glbAsset ?? product.glbAssetUrl,
+});
+
+const normalizePet = (pet: BackendPet): PetProfile => ({
+  id: pet.id ?? pet._id ?? '',
+  name: pet.name ?? 'Pet',
+  breed: pet.breed ?? 'Labrador Retriever',
+  measurements: pet.measurements ?? {
+    backLength: pet.backLength ?? 0,
+    neckGirth: pet.neckGirth ?? 0,
+    chestGirth: pet.chestGirth ?? 0,
+  },
+});
 
 export function VirtualFitting() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updatePetProfiles } = useAuth();
 
   const [selectedBreed, setSelectedBreed] = useState<Breed>('Labrador Retriever');
   const [measurements, setMeasurements] = useState<Measurements>({
@@ -28,59 +92,97 @@ export function VirtualFitting() {
     chestGirth: 0,
   });
   const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState('');
+  const [petProfilesLoaded, setPetProfilesLoaded] = useState(false);
   const [viewAngle, setViewAngle] = useState<'front' | 'side' | 'back' | 'top'>('front');
 
   const productId = searchParams.get('product');
-  const selectedProduct = productId ? mockProducts.find(p => p.id === productId) : null;
+  const petProfiles = user?.petProfiles ?? [];
 
   useEffect(() => {
-    if (user && user.petProfiles.length > 0) {
-      const firstPet = user.petProfiles[0];
+    if (!isAuthenticated || petProfiles.length > 0 || petProfilesLoaded) {
+      return;
+    }
+
+    const loadPets = async () => {
+      try {
+        const data = await petsAPI.getPets();
+        if (Array.isArray(data)) {
+          updatePetProfiles(data.map(normalizePet));
+        }
+      } catch (err) {
+        toast.error('Unable to load saved pet profiles');
+      } finally {
+        setPetProfilesLoaded(true);
+      }
+    };
+
+    loadPets();
+  }, [isAuthenticated, petProfiles.length, petProfilesLoaded, updatePetProfiles]);
+
+  useEffect(() => {
+    if (petProfiles.length > 0) {
+      const firstPet = petProfiles[0];
       setSelectedBreed(firstPet.breed);
-      setMeasurements(firstPet.measurements);
+      setMeasurements(firstPet.measurements ?? { backLength: 0, neckGirth: 0, chestGirth: 0 });
     }
-  }, [user]);
+  }, [petProfiles]);
 
-  const calculateSizeRecommendation = (): SizeRecommendation | null => {
-    if (!measurements.backLength || !measurements.neckGirth || !measurements.chestGirth) {
-      return null;
+  useEffect(() => {
+    const result = getSizeRecommendation(
+      selectedBreed,
+      measurements.backLength,
+      measurements.neckGirth,
+      measurements.chestGirth
+    );
+    setRecommendation(result);
+  }, [selectedBreed, measurements]);
+
+  useEffect(() => {
+    if (!productId) {
+      setSelectedProduct(null);
+      setProductError('');
+      setProductLoading(false);
+      return;
     }
 
-    const guide = breedSizeGuide[selectedBreed];
-    const { backLength, neckGirth, chestGirth } = measurements;
+    const loadProduct = async () => {
+      setProductLoading(true);
+      setProductError('');
 
-    if (backLength > guide.maxBackLength || neckGirth > guide.maxNeckGirth || chestGirth > guide.maxChestGirth) {
-      return { size: 'XL', confidence: 'custom' };
-    }
+      try {
+        const data = await productsAPI.getProductById(productId);
 
-    if (backLength < guide.minBackLength || neckGirth < guide.minNeckGirth || chestGirth < guide.minChestGirth) {
-      return { size: 'XS', confidence: 'custom' };
-    }
+        if (data?.message && !data?._id && !data?.id) {
+          throw new Error(data.message);
+        }
 
-    const backLengthRange = guide.maxBackLength - guide.minBackLength;
-    const backLengthPct = (backLength - guide.minBackLength) / backLengthRange;
+        const product = normalizeProduct(data);
+        if (!product.id) {
+          throw new Error('Product not found');
+        }
 
-    const chestGirthRange = guide.maxChestGirth - guide.minChestGirth;
-    const chestGirthPct = (chestGirth - guide.minChestGirth) / chestGirthRange;
+        setSelectedProduct(product);
+      } catch (err) {
+        setSelectedProduct(null);
+        setProductError(err instanceof Error ? err.message : 'Unable to load selected product');
+      } finally {
+        setProductLoading(false);
+      }
+    };
 
-    const avgPct = (backLengthPct + chestGirthPct) / 2;
-
-    let size: Size;
-    if (avgPct < 0.2) size = 'XS';
-    else if (avgPct < 0.4) size = 'S';
-    else if (avgPct < 0.6) size = 'M';
-    else if (avgPct < 0.8) size = 'L';
-    else size = 'XL';
-
-    const sizeThreshold = 0.05;
-    const nearBoundary = (avgPct % 0.2) < sizeThreshold || (avgPct % 0.2) > (0.2 - sizeThreshold);
-    const confidence: FitConfidence = nearBoundary ? 'check' : 'good';
-
-    return { size, confidence };
-  };
+    loadProduct();
+  }, [productId]);
 
   const handleGetRecommendation = () => {
-    const result = calculateSizeRecommendation();
+    const result = getSizeRecommendation(
+      selectedBreed,
+      measurements.backLength,
+      measurements.neckGirth,
+      measurements.chestGirth
+    );
     setRecommendation(result);
   };
 
@@ -102,7 +204,7 @@ export function VirtualFitting() {
 
   const getConfidenceBadge = (confidence: FitConfidence) => {
     switch (confidence) {
-      case 'good':
+      case 'Good Fit':
         return (
           <Badge className="bg-[#7A9D7A] hover:bg-[#6A8D6A] text-white">
             <span className="mr-1">🐾</span>
@@ -110,14 +212,14 @@ export function VirtualFitting() {
             Good Fit
           </Badge>
         );
-      case 'check':
+      case 'Check Fit':
         return (
           <Badge className="bg-[#D4A574] hover:bg-[#C49564] text-white">
             <AlertTriangle className="w-4 h-4 mr-1" />
             Check Fit
           </Badge>
         );
-      case 'custom':
+      case 'Custom Fit Recommended':
         return (
           <Badge className="bg-[#B85C5C] hover:bg-[#A84C4C] text-white">
             <RulerIcon className="w-4 h-4 mr-1" />
@@ -176,6 +278,31 @@ export function VirtualFitting() {
         </div>
 
         <div className="space-y-6">
+          {!isAuthenticated && (
+            <Card>
+              <CardContent className="py-4">
+                <p className="text-sm text-[#6B5D56] mb-3">Login to use saved pet profiles. You can still enter measurements manually.</p>
+                <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>Go to Login</Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {productLoading && (
+            <Card>
+              <CardContent className="py-4">
+                <p className="text-sm text-[#6B5D56]">Loading selected product...</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {productError && (
+            <Card>
+              <CardContent className="py-4">
+                <p className="text-sm text-[#8B4A4A]">{productError}</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Step 1: Select Breed</CardTitle>
@@ -262,13 +389,13 @@ export function VirtualFitting() {
                   </div>
                 </div>
 
-                {recommendation.confidence === 'check' && (
+                {recommendation.confidence === 'Check Fit' && (
                   <p className="text-sm text-[#8B6F47] bg-[#F5EFE7] p-3 rounded-lg border border-[#D4A574]">
                     Your measurements are close to a size boundary. Consider trying both this size and an adjacent one.
                   </p>
                 )}
 
-                {recommendation.confidence === 'custom' && (
+                {recommendation.confidence === 'Custom Fit Recommended' && (
                   <p className="text-sm text-[#8B4A4A] bg-[#F5E8E8] p-3 rounded-lg border border-[#B85C5C]">
                     Your measurements exceed the standard range. We recommend custom sizing for the best fit.
                   </p>

@@ -1,28 +1,113 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { mockProducts } from '../data/mockData';
-import { Size } from '../types';
+import { productsAPI } from '../services/api';
+import { ApparelType, Breed, Product, Size } from '../types';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
+
+type BackendProduct = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  type?: string;
+  apparelType?: ApparelType;
+  breedCompatibility?: Breed[];
+  sizes?: Size[];
+  sizesAvailable?: Size[];
+  imageUrl?: string;
+  images?: string[];
+  glbAssetUrl?: string;
+  glbAsset?: string;
+  message?: string;
+};
+
+const apparelTypeLabels: Record<string, ApparelType> = {
+  shirt: 'Shirt',
+  coat: 'Coat',
+  sweater: 'Sweater',
+  hoodie: 'Hoodie',
+  Shirt: 'Shirt',
+  Coat: 'Coat',
+  Sweater: 'Sweater',
+  Hoodie: 'Hoodie',
+};
+
+const normalizeProduct = (product: BackendProduct): Product => ({
+  id: product.id ?? product._id ?? '',
+  name: product.name ?? 'Untitled Product',
+  description: product.description ?? '',
+  price: product.price ?? 0,
+  apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
+  breedCompatibility: product.breedCompatibility ?? [],
+  sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
+  images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
+  glbAsset: product.glbAsset ?? product.glbAssetUrl,
+});
 
 export function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
+  const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const product = mockProducts.find(p => p.id === id);
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!id) {
+        setError('Product not found');
+        setLoading(false);
+        return;
+      }
 
-  if (!product) {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await productsAPI.getProductById(id);
+
+        if (data?.message && !data?._id && !data?.id) {
+          throw new Error(data.message);
+        }
+
+        const normalizedProduct = normalizeProduct(data);
+        if (!normalizedProduct.id) {
+          throw new Error('Product not found');
+        }
+
+        setProduct(normalizedProduct);
+        setSelectedSize(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to load product');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id]);
+
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Product not found</h1>
+        <h1 className="text-2xl font-bold mb-4">Loading product...</h1>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">{error || 'Product not found'}</h1>
         <Button onClick={() => navigate('/products')}>Back to Products</Button>
       </div>
     );
@@ -31,6 +116,12 @@ export function ProductDetail() {
   const handleAddToCart = () => {
     if (!selectedSize) {
       toast.error('Please select a size');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      navigate('/login');
       return;
     }
 
