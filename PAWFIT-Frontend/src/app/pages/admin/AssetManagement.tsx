@@ -61,7 +61,7 @@ export function AssetManagement() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-          <span className="mr-3">🎨</span>
+          
           3D Asset Management
         </h1>
         <button
@@ -111,7 +111,7 @@ export function AssetManagement() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {asset.breed || '—'}
+                      {asset.breed || ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {asset.fileSize}

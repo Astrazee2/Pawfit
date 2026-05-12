@@ -37,6 +37,36 @@ export const addToCart = async (req, res) => {
       await cart.save()
     }
 
+    await cart.populate('items.product')
+    res.json(cart)
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message })
+  }
+}
+
+// Update cart item quantity
+export const updateCartItem = async (req, res) => {
+  try {
+    const { quantity } = req.body
+    const cart = await Cart.findOne({ user: req.user.id })
+
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' })
+    }
+
+    const item = cart.items.id(req.params.itemId)
+    if (!item) {
+      return res.status(404).json({ message: 'Cart item not found' })
+    }
+
+    if (quantity <= 0) {
+      item.deleteOne()
+    } else {
+      item.quantity = quantity
+    }
+
+    await cart.save()
+    await cart.populate('items.product')
     res.json(cart)
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message })
@@ -56,6 +86,7 @@ export const removeFromCart = async (req, res) => {
     )
 
     await cart.save()
+    await cart.populate('items.product')
     res.json(cart)
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message })

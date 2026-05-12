@@ -36,7 +36,6 @@ export function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
             <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
-              <span className="text-3xl">🐾</span>
               <span style={{ fontFamily: "'DM Serif Display', serif" }}>PawFit</span>
             </Link>
 

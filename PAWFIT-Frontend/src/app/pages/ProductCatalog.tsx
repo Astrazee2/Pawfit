@@ -6,47 +6,12 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { productsAPI } from '../services/api';
 import { ApparelType, Breed, Product, Size } from '../types';
-import { Search } from 'lucide-react';
+import { normalizeProduct } from '../utils/dataMappers';
+import { PackageOpen, Search } from 'lucide-react';
 
-type BackendProduct = {
-  _id?: string;
-  id?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  type?: string;
-  apparelType?: ApparelType;
-  breedCompatibility?: Breed[];
-  sizes?: Size[];
-  sizesAvailable?: Size[];
-  imageUrl?: string;
-  images?: string[];
-  glbAssetUrl?: string;
-  glbAsset?: string;
-};
-
-const apparelTypeLabels: Record<string, ApparelType> = {
-  shirt: 'Shirt',
-  coat: 'Coat',
-  sweater: 'Sweater',
-  hoodie: 'Hoodie',
-  Shirt: 'Shirt',
-  Coat: 'Coat',
-  Sweater: 'Sweater',
-  Hoodie: 'Hoodie',
-};
-
-const normalizeProduct = (product: BackendProduct): Product => ({
-  id: product.id ?? product._id ?? '',
-  name: product.name ?? 'Untitled Product',
-  description: product.description ?? '',
-  price: product.price ?? 0,
-  apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
-  breedCompatibility: product.breedCompatibility ?? [],
-  sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
-  images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
-  glbAsset: product.glbAsset ?? product.glbAssetUrl,
-});
+const apparelTypes: ApparelType[] = ['Shirt', 'Coat', 'Sweater', 'Hoodie'];
+const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const sizes: Size[] = ['XS', 'S', 'M', 'L', 'XL'];
 
 export function ProductCatalog() {
   const navigate = useNavigate();
@@ -58,10 +23,6 @@ export function ProductCatalog() {
   const [selectedBreeds, setSelectedBreeds] = useState<Breed[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<Size[]>([]);
 
-  const apparelTypes: ApparelType[] = ['Shirt', 'Coat', 'Sweater', 'Hoodie'];
-  const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
-  const sizes: Size[] = ['XS', 'S', 'M', 'L', 'XL'];
-
   useEffect(() => {
     const loadProducts = async () => {
       setLoading(true);
@@ -69,11 +30,9 @@ export function ProductCatalog() {
 
       try {
         const data = await productsAPI.getProducts();
-
         if (!Array.isArray(data)) {
           throw new Error(data?.message || 'Unable to load products');
         }
-
         setProducts(data.map(normalizeProduct).filter(product => product.id));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load products');
@@ -87,28 +46,18 @@ export function ProductCatalog() {
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesApparelType = selectedApparelTypes.length === 0 ||
-        selectedApparelTypes.includes(product.apparelType);
-
-      const matchesBreed = selectedBreeds.length === 0 ||
-        selectedBreeds.some(breed => product.breedCompatibility.includes(breed));
-
-      const matchesSize = selectedSizes.length === 0 ||
-        selectedSizes.some(size => product.sizesAvailable.includes(size));
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = product.name.toLowerCase().includes(query) || product.description.toLowerCase().includes(query);
+      const matchesApparelType = selectedApparelTypes.length === 0 || selectedApparelTypes.includes(product.apparelType);
+      const matchesBreed = selectedBreeds.length === 0 || selectedBreeds.some(breed => product.breedCompatibility.includes(breed));
+      const matchesSize = selectedSizes.length === 0 || selectedSizes.some(size => product.sizesAvailable.includes(size));
 
       return matchesSearch && matchesApparelType && matchesBreed && matchesSize;
     });
   }, [products, searchQuery, selectedApparelTypes, selectedBreeds, selectedSizes]);
 
   const toggleFilter = <T,>(item: T, selected: T[], setSelected: (items: T[]) => void) => {
-    if (selected.includes(item)) {
-      setSelected(selected.filter(i => i !== item));
-    } else {
-      setSelected([...selected, item]);
-    }
+    setSelected(selected.includes(item) ? selected.filter(i => i !== item) : [...selected, item]);
   };
 
   const handleClearFilters = () => {
@@ -121,7 +70,6 @@ export function ProductCatalog() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">🛍️</span>
         Product Catalog
       </h1>
 
@@ -190,11 +138,7 @@ export function ProductCatalog() {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleClearFilters}
-          >
+          <Button variant="outline" className="w-full" onClick={handleClearFilters}>
             Clear Filters
           </Button>
         </aside>
@@ -226,16 +170,18 @@ export function ProductCatalog() {
                     className="cursor-pointer hover:shadow-lg transition-shadow border-[#E8E4DF] rounded-2xl overflow-hidden"
                     onClick={() => navigate(`/products/${product.id}`)}
                   >
-                    <div className="aspect-square bg-gray-200 rounded-t-lg"></div>
+                    <div className="aspect-square bg-gray-200 rounded-t-lg overflow-hidden">
+                      {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
+                    </div>
                     <CardContent className="pt-4">
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start gap-3 mb-2">
                         <h3 className="font-semibold">{product.name}</h3>
                         <Badge variant="secondary">{product.apparelType}</Badge>
                       </div>
                       <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#5C3D2E] font-bold text-lg">${product.price}</span>
-                        <div className="flex gap-1">
+                      <div className="flex justify-between items-center gap-3">
+                        <span className="text-[#5C3D2E] font-bold text-lg">${product.price.toFixed(2)}</span>
+                        <div className="flex flex-wrap justify-end gap-1">
                           {product.sizesAvailable.map(size => (
                             <span key={size} className="text-xs px-1.5 py-0.5 bg-gray-100 rounded">
                               {size}
@@ -250,11 +196,9 @@ export function ProductCatalog() {
 
               {filteredProducts.length === 0 && (
                 <div className="text-center py-12">
-                  <div className="text-8xl mb-4">🐕‍🦺</div>
+                  <PackageOpen className="w-16 h-16 mx-auto mb-4 text-[#C4714A]" />
                   <p className="text-[#6B5D56] mb-4">No products found matching your filters</p>
-                  <Button onClick={handleClearFilters}>
-                    Clear All Filters
-                  </Button>
+                  <Button onClick={handleClearFilters}>Clear All Filters</Button>
                 </div>
               )}
             </>

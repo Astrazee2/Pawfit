@@ -207,7 +207,7 @@ export function VirtualFitting() {
       case 'Good Fit':
         return (
           <Badge className="bg-[#7A9D7A] hover:bg-[#6A8D6A] text-white">
-            <span className="mr-1">🐾</span>
+            
             <Check className="w-4 h-4 mr-1" />
             Good Fit
           </Badge>
@@ -232,7 +232,7 @@ export function VirtualFitting() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">🐕</span>
+        
         3D Virtual Fitting
       </h1>
 

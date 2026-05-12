@@ -4,17 +4,42 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Order } from '../types';
 import { CheckCircle } from 'lucide-react';
+import { ordersAPI } from '../services/api';
+import { normalizeOrder } from '../utils/dataMappers';
 
 export function OrderConfirmation() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const orders = JSON.parse(localStorage.getItem('pawfit_orders') || '[]');
-    const foundOrder = orders.find((o: Order) => o.id === id);
-    setOrder(foundOrder);
+    const loadOrder = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await ordersAPI.getOrderById(id);
+        setOrder(normalizeOrder(data));
+      } catch (err) {
+        setOrder(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrder();
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">Loading order...</h1>
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -30,9 +55,8 @@ export function OrderConfirmation() {
       <Card>
         <CardContent className="pt-8 pb-8">
           <div className="text-center mb-8">
-            <div className="text-8xl mb-4 animate-bounce">🐕</div>
             <CheckCircle className="w-20 h-20 text-[#7A9D7A] mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>Order Confirmed!</h1>
+            <h1 className="text-3xl font-bold mb-2 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>Order Confirmed</h1>
             <p className="text-[#6B5D56]">Thank you for shopping with PawFit</p>
           </div>
 
@@ -72,7 +96,7 @@ export function OrderConfirmation() {
               {order.items.map((item) => (
                 <div key={`${item.product.id}-${item.size}`} className="flex justify-between text-sm">
                   <span>
-                    {item.product.name} (Size {item.size}) × {item.quantity}
+                    {item.product.name} (Size {item.size}) x {item.quantity}
                   </span>
                   <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                 </div>

@@ -68,10 +68,6 @@ const register = async (name: string, email: string, password: string): Promise<
       const updatedUser = { ...user, petProfiles: profiles };
       setUser(updatedUser);
       localStorage.setItem('pawfit_user', JSON.stringify(updatedUser));
-
-      const users = JSON.parse(localStorage.getItem('pawfit_users') || '[]');
-      const updatedUsers = users.map((u: User) => u.id === user.id ? updatedUser : u);
-      localStorage.setItem('pawfit_users', JSON.stringify(updatedUsers));
     }
   };
 

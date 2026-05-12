@@ -6,8 +6,9 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ShippingInfo, Order } from '../types';
+import { ShippingInfo } from '../types';
 import { toast } from 'sonner';
+import { ordersAPI } from '../services/api';
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -19,30 +20,35 @@ export function Checkout() {
     address: '',
     contactNumber: '',
   });
-
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!shippingInfo.name || !shippingInfo.address || !shippingInfo.contactNumber) {
       toast.error('Please fill in all shipping information');
       return;
     }
 
-    const order: Order = {
-      id: Date.now().toString(),
-      orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
-      date: new Date().toISOString(),
-      items: cart,
-      total: cartTotal,
-      status: 'Processing',
-      shippingInfo,
-    };
+    try {
+      const order = await ordersAPI.createOrder({
+        items: cart.map(item => ({
+          product: item.product.id,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.product.price,
+        })),
+        totalAmount: cartTotal + 5,
+        shippingAddress: {
+          fullName: shippingInfo.name,
+          address: shippingInfo.address,
+          phone: shippingInfo.contactNumber,
+        },
+      });
 
-    const existingOrders = JSON.parse(localStorage.getItem('pawfit_orders') || '[]');
-    localStorage.setItem('pawfit_orders', JSON.stringify([...existingOrders, order]));
-
-    clearCart();
-    navigate(`/order-confirmation/${order.id}`);
+      await clearCart();
+      navigate(`/order-confirmation/${order._id || order.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to place order');
+    }
   };
 
   if (!isAuthenticated) {
@@ -66,7 +72,6 @@ export function Checkout() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">💳</span>
         Checkout
       </h1>
 
@@ -140,9 +145,9 @@ export function Checkout() {
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={`${item.product.id}-${item.size}`} className="flex justify-between text-sm">
+                  <div key={`${item.product.id}-${item.size}`} className="flex justify-between gap-4 text-sm">
                     <span className="text-gray-600">
-                      {item.product.name} (Size {item.size}) × {item.quantity}
+                      {item.product.name} (Size {item.size}) x {item.quantity}
                     </span>
                     <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>

@@ -34,6 +34,7 @@ export interface CartItem {
   product: Product;
   size: Size;
   quantity: number;
+  cartItemId?: string;
 }
 
 export interface Order {

@@ -4,52 +4,12 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { productsAPI } from '../services/api';
-import { ApparelType, Breed, Product, Size } from '../types';
+import { Product, Size } from '../types';
+import { normalizeProduct } from '../utils/dataMappers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
-
-type BackendProduct = {
-  _id?: string;
-  id?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  type?: string;
-  apparelType?: ApparelType;
-  breedCompatibility?: Breed[];
-  sizes?: Size[];
-  sizesAvailable?: Size[];
-  imageUrl?: string;
-  images?: string[];
-  glbAssetUrl?: string;
-  glbAsset?: string;
-  message?: string;
-};
-
-const apparelTypeLabels: Record<string, ApparelType> = {
-  shirt: 'Shirt',
-  coat: 'Coat',
-  sweater: 'Sweater',
-  hoodie: 'Hoodie',
-  Shirt: 'Shirt',
-  Coat: 'Coat',
-  Sweater: 'Sweater',
-  Hoodie: 'Hoodie',
-};
-
-const normalizeProduct = (product: BackendProduct): Product => ({
-  id: product.id ?? product._id ?? '',
-  name: product.name ?? 'Untitled Product',
-  description: product.description ?? '',
-  price: product.price ?? 0,
-  apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
-  breedCompatibility: product.breedCompatibility ?? [],
-  sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
-  images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
-  glbAsset: product.glbAsset ?? product.glbAssetUrl,
-});
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -113,7 +73,7 @@ export function ProductDetail() {
     );
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSize) {
       toast.error('Please select a size');
       return;
@@ -125,8 +85,12 @@ export function ProductDetail() {
       return;
     }
 
-    addToCart(product, selectedSize);
-    toast.success('Added to cart!');
+    try {
+      await addToCart(product, selectedSize);
+      toast.success('Added to cart');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to add item to cart');
+    }
   };
 
   const handleTryOn = () => {
@@ -136,15 +100,19 @@ export function ProductDetail() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Button variant="ghost" onClick={() => navigate('/products')} className="mb-4">
-        ← Back to Products
+         Back to Products
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div>
-          <div className="aspect-square bg-gray-200 rounded-lg mb-4"></div>
+          <div className="aspect-square bg-gray-200 rounded-lg mb-4 overflow-hidden">
+            {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
+          </div>
           <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="aspect-square bg-gray-200 rounded cursor-pointer hover:opacity-75"></div>
+            {(product.images.length ? product.images : ['', '', '', '']).slice(0, 4).map((image, i) => (
+              <div key={`${image}-${i}`} className="aspect-square bg-gray-200 rounded cursor-pointer hover:opacity-75 overflow-hidden">
+                {image && <img src={image} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />}
+              </div>
             ))}
           </div>
         </div>
@@ -153,7 +121,7 @@ export function ProductDetail() {
           <div className="mb-4">
             <Badge variant="secondary" className="mb-2 bg-[#C4714A] text-white">{product.apparelType}</Badge>
             <h1 className="text-4xl font-bold mb-2 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>{product.name}</h1>
-            <p className="text-3xl text-[#5C3D2E] font-bold">${product.price}</p>
+            <p className="text-3xl text-[#5C3D2E] font-bold">${product.price.toFixed(2)}</p>
           </div>
 
           <p className="text-gray-600 mb-6">{product.description}</p>

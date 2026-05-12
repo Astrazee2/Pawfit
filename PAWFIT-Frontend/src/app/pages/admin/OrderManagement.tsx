@@ -1,25 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
 import { Order, OrderStatus } from '../../types';
 import { toast } from 'sonner';
+import { ordersAPI } from '../../services/api';
+import { normalizeOrder } from '../../utils/dataMappers';
+
+const toBackendStatus: Record<OrderStatus, string> = {
+  Processing: 'pending',
+  Shipped: 'shipped',
+  Delivered: 'delivered',
+  Cancelled: 'cancelled',
+};
 
 export function OrderManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'All'>('All');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem('pawfit_orders') || '[]');
-    setOrders(savedOrders.sort((a: Order, b: Order) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    const loadOrders = async () => {
+      try {
+        const data = await ordersAPI.getOrders();
+        setOrders(Array.isArray(data) ? data.map(normalizeOrder) : []);
+      } catch (err) {
+        toast.error('Unable to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
   }, []);
 
-  const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    const updatedOrders = orders.map(order =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    localStorage.setItem('pawfit_orders', JSON.stringify(updatedOrders));
-    toast.success('Order status updated');
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      const updatedOrder = normalizeOrder(await ordersAPI.updateOrderStatus(orderId, toBackendStatus[newStatus]));
+      setOrders(orders.map(order => order.id === orderId ? updatedOrder : order));
+      toast.success('Order status updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to update order');
+    }
   };
 
   const filteredOrders = filter === 'All' ? orders : orders.filter(o => o.status === filter);
@@ -27,7 +47,6 @@ export function OrderManagement() {
   return (
     <div className="p-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">📋</span>
         Order Management
       </h1>
 
@@ -53,32 +72,22 @@ export function OrderManagement() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Items
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.length === 0 ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                      No orders found
-                    </td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">Loading orders...</td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No orders found</td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
@@ -93,9 +102,7 @@ export function OrderManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                        </div>
+                        <div className="text-sm">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-teal-600">${order.total.toFixed(2)}</div>
@@ -112,6 +119,7 @@ export function OrderManagement() {
                           <option value="Processing">Processing</option>
                           <option value="Shipped">Shipped</option>
                           <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
                         </select>
                       </td>
                     </tr>
