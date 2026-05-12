@@ -15,7 +15,6 @@ export function Cart() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Card>
           <CardContent className="py-16 text-center">
-            <div className="text-8xl mb-4">🐕</div>
             <h2 className="text-2xl font-bold mb-2 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>Your cart is empty</h2>
             <p className="text-[#6B5D56] mb-6">Start shopping to add items to your pup's wardrobe</p>
             <Button onClick={() => navigate('/products')}>Browse Products</Button>

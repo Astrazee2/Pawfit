@@ -37,7 +37,6 @@ export function AccountSettings() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">⚙️</span>
         Account Settings
       </h1>
 

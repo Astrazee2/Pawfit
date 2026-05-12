@@ -128,9 +128,6 @@ export function Checkout() {
                   </label>
                 ))}
               </div>
-              <p className="text-sm text-gray-500 mt-4">
-                Note: This is a demo checkout. No real payment processing.
-              </p>
             </CardContent>
           </Card>
         </div>
@@ -171,7 +168,6 @@ export function Checkout() {
               </div>
 
               <Button onClick={handlePlaceOrder} className="w-full bg-[#5C3D2E] hover:bg-[#4A3024] rounded-xl" size="lg">
-                <span className="mr-2">🐾</span>
                 Place Order
               </Button>
             </CardContent>
