@@ -17,9 +17,6 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { ProductManagement } from './pages/admin/ProductManagement';
 import { OrderManagement } from './pages/admin/OrderManagement';
 import { AssetManagement } from './pages/admin/AssetManagement';
-import { StatsPage } from './pages/admin/StatsPage';
-import { ReportsPage } from './pages/admin/ReportsPage';
-import { FinancesPage } from './pages/admin/FinancesPage';
 import { InboxPage } from './pages/admin/InboxPage';
 import { NotificationsPage } from './pages/admin/NotificationsPage';
 import { SettingsPage } from './pages/admin/SettingsPage';
@@ -51,9 +48,6 @@ export const router = createBrowserRouter([
       { path: 'products', Component: ProductManagement },
       { path: 'orders', Component: OrderManagement },
       { path: 'assets', Component: AssetManagement },
-      { path: 'stats', Component: StatsPage },
-      { path: 'reports', Component: ReportsPage },
-      { path: 'finances', Component: FinancesPage },
       { path: 'inbox', Component: InboxPage },
       { path: 'notifications', Component: NotificationsPage },
       { path: 'settings', Component: SettingsPage },

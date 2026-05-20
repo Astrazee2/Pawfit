@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import {
   Package, ShoppingCart, Box, Search, Bell, Inbox,
-  BarChart3, FileText, DollarSign, Settings, TrendingUp, Menu, X
+  BarChart3, Settings, TrendingUp, Menu, X
 } from 'lucide-react';
 
 export function AdminLayout() {
@@ -30,11 +30,6 @@ export function AdminLayout() {
       { to: '/admin/products', label: 'Products', icon: Package },
       { to: '/admin/orders', label: 'Orders & Delivery', icon: ShoppingCart },
       { to: '/admin/assets', label: '3D Assets', icon: Box },
-    ]},
-    { section: 'INSIGHTS', items: [
-      { to: '/admin/stats', label: 'Stats', icon: TrendingUp },
-      { to: '/admin/reports', label: 'Reports', icon: FileText },
-      { to: '/admin/finances', label: 'Finances', icon: DollarSign },
     ]},
     { section: 'OTHER', items: [
       { to: '/admin/inbox', label: 'Inbox', icon: Inbox },
