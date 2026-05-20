@@ -7,10 +7,18 @@ export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body
 
+    if (!name || !email || !password) {
+      const error = new Error('Name, email, and password are required')
+      error.statusCode = 400
+      throw error
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email })
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' })
+      const error = new Error('Email already registered')
+      error.statusCode = 400
+      throw error
     }
 
     // Hash password
@@ -41,7 +49,7 @@ export const register = async (req, res) => {
       }
     })
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message })
+    next(err) 
   }
 }
 
@@ -50,16 +58,26 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body
 
+    if (!email || !password) {
+      const error = new Error('Email and password are required')
+      error.statusCode = 400
+      throw error
+    }
+
     // Check if user exists
     const user = await User.findOne({ email })
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' })
+      const error = new Error('Invalid credentials')
+      error.statusCode = 400
+      throw error
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' })
+      const error = new Error('Invalid credentials')
+      error.statusCode = 400
+      throw error
     }
 
     // Generate token
@@ -79,6 +97,6 @@ export const login = async (req, res) => {
       }
     })
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message })
+    next(err)
   }
 }
