@@ -1,0 +1,12 @@
+{
+  "name": "pawfit",
+  "version": "1.0.0",
+  "scripts": {
+    "frontend": "cd PAWFIT-Frontend && npm run dev",
+    "backend": "cd PAWFIT-Backend && npm run dev",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
