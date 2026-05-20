@@ -7,11 +7,11 @@ interface DogAvatar3DProps {
 
 export function DogAvatar3D({ breed, apparelColor = '#3B82F6' }: DogAvatar3DProps) {
   const breedImages: Record<Breed, string> = {
-    'Labrador Retriever': '🦮',
-    'Shih Tzu': '🐕',
-    'Dachshund': '🌭',
-    'Pomeranian': '🐶',
-    'Aspin/Mixed': '🐕‍🦺',
+    'Labrador Retriever': '',
+    'Shih Tzu': '',
+    'Dachshund': '',
+    'Pomeranian': '',
+    'Aspin/Mixed': '',
   };
 
   const breedSizes: Record<Breed, string> = {
@@ -30,8 +30,8 @@ export function DogAvatar3D({ breed, apparelColor = '#3B82F6' }: DogAvatar3DProp
         ))}
       </div>
 
-      <div className="absolute top-4 right-4 text-6xl opacity-10 rotate-12">🐾</div>
-      <div className="absolute bottom-4 left-4 text-6xl opacity-10 -rotate-12">🐾</div>
+      <div className="absolute top-4 right-4 text-6xl opacity-10 rotate-12"></div>
+      <div className="absolute bottom-4 left-4 text-6xl opacity-10 -rotate-12"></div>
 
       <div className="relative z-10 text-center">
         <div className="text-9xl mb-4 drop-shadow-lg" style={{
@@ -48,7 +48,7 @@ export function DogAvatar3D({ breed, apparelColor = '#3B82F6' }: DogAvatar3DProp
           </div>
         </div>
         <div className="mt-4 text-xs text-[#6B5D56] bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 inline-block shadow-sm border border-[#E8E4DF]">
-          <span className="mr-1">✨</span>
+          
           3D Preview Mode
         </div>
       </div>

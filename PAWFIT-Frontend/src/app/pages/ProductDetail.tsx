@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { mockProducts } from '../data/mockData';
-import { Size } from '../types';
+import { productsAPI } from '../services/api';
+import { Product, Size } from '../types';
+import { normalizeProduct } from '../utils/dataMappers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ShoppingCart } from 'lucide-react';
@@ -15,27 +16,81 @@ export function ProductDetail() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
+  const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const product = mockProducts.find(p => p.id === id);
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!id) {
+        setError('Product not found');
+        setLoading(false);
+        return;
+      }
 
-  if (!product) {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await productsAPI.getProductById(id);
+
+        if (data?.message && !data?._id && !data?.id) {
+          throw new Error(data.message);
+        }
+
+        const normalizedProduct = normalizeProduct(data);
+        if (!normalizedProduct.id) {
+          throw new Error('Product not found');
+        }
+
+        setProduct(normalizedProduct);
+        setSelectedSize(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to load product');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id]);
+
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Product not found</h1>
+        <h1 className="text-2xl font-bold mb-4">Loading product...</h1>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">{error || 'Product not found'}</h1>
         <Button onClick={() => navigate('/products')}>Back to Products</Button>
       </div>
     );
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSize) {
       toast.error('Please select a size');
       return;
     }
 
-    addToCart(product, selectedSize);
-    toast.success('Added to cart!');
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await addToCart(product, selectedSize);
+      toast.success('Added to cart');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to add item to cart');
+    }
   };
 
   const handleTryOn = () => {
@@ -45,15 +100,19 @@ export function ProductDetail() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Button variant="ghost" onClick={() => navigate('/products')} className="mb-4">
-        ← Back to Products
+         Back to Products
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div>
-          <div className="aspect-square bg-gray-200 rounded-lg mb-4"></div>
+          <div className="aspect-square bg-gray-200 rounded-lg mb-4 overflow-hidden">
+            {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
+          </div>
           <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="aspect-square bg-gray-200 rounded cursor-pointer hover:opacity-75"></div>
+            {(product.images.length ? product.images : ['', '', '', '']).slice(0, 4).map((image, i) => (
+              <div key={`${image}-${i}`} className="aspect-square bg-gray-200 rounded cursor-pointer hover:opacity-75 overflow-hidden">
+                {image && <img src={image} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />}
+              </div>
             ))}
           </div>
         </div>
@@ -62,7 +121,7 @@ export function ProductDetail() {
           <div className="mb-4">
             <Badge variant="secondary" className="mb-2 bg-[#C4714A] text-white">{product.apparelType}</Badge>
             <h1 className="text-4xl font-bold mb-2 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>{product.name}</h1>
-            <p className="text-3xl text-[#5C3D2E] font-bold">${product.price}</p>
+            <p className="text-3xl text-[#5C3D2E] font-bold">${product.price.toFixed(2)}</p>
           </div>
 
           <p className="text-gray-600 mb-6">{product.description}</p>

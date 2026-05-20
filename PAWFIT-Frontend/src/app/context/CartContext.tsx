@@ -1,67 +1,66 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { CartItem, Product, Size } from '../types';
+import { cartAPI } from '../services/api';
+import { normalizeCartItems } from '../utils/dataMappers';
+import { useAuth } from './AuthContext';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, size: Size) => void;
-  removeFromCart: (productId: string, size: Size) => void;
-  updateQuantity: (productId: string, size: Size, quantity: number) => void;
-  clearCart: () => void;
+  addToCart: (product: Product, size: Size) => Promise<void>;
+  removeFromCart: (productId: string, size: Size) => Promise<void>;
+  updateQuantity: (productId: string, size: Size, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   cartTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
-    const savedCart = localStorage.getItem('pawfit_cart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('pawfit_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  const addToCart = (product: Product, size: Size) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.product.id === product.id && item.size === size);
-
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.product.id === product.id && item.size === size
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-
-      return [...prevCart, { product, size, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (productId: string, size: Size) => {
-    setCart(prevCart => prevCart.filter(item => !(item.product.id === productId && item.size === size)));
-  };
-
-  const updateQuantity = (productId: string, size: Size, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId, size);
+    if (!isAuthenticated) {
+      setCart([]);
       return;
     }
 
-    setCart(prevCart =>
-      prevCart.map(item =>
-        item.product.id === productId && item.size === size
-          ? { ...item, quantity }
-          : item
-      )
-    );
+    const loadCart = async () => {
+      const data = await cartAPI.getCart();
+      setCart(normalizeCartItems(data.items));
+    };
+
+    loadCart().catch(() => setCart([]));
+  }, [isAuthenticated]);
+
+  const addToCart = async (product: Product, size: Size) => {
+    const data = await cartAPI.addToCart(product.id, size, 1, product.price);
+    setCart(normalizeCartItems(data.items));
   };
 
-  const clearCart = () => {
+  const removeFromCart = async (productId: string, size: Size) => {
+    const item = cart.find(cartItem => cartItem.product.id === productId && cartItem.size === size);
+    if (!item?.cartItemId) return;
+
+    const data = await cartAPI.removeFromCart(item.cartItemId);
+    setCart(normalizeCartItems(data.items));
+  };
+
+  const updateQuantity = async (productId: string, size: Size, quantity: number) => {
+    const item = cart.find(cartItem => cartItem.product.id === productId && cartItem.size === size);
+    if (!item?.cartItemId) return;
+
+    if (quantity <= 0) {
+      await removeFromCart(productId, size);
+      return;
+    }
+
+    const data = await cartAPI.updateCartItem(item.cartItemId, quantity);
+    setCart(normalizeCartItems(data.items));
+  };
+
+  const clearCart = async () => {
+    await cartAPI.clearCart();
     setCart([]);
   };
 

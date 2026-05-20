@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -12,6 +12,17 @@ import { petsAPI } from '../services/api';
 
 const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 
+const normalizePet = (pet: any): PetProfile => ({
+  id: pet.id ?? pet._id ?? '',
+  name: pet.name ?? 'Pet',
+  breed: pet.breed ?? 'Labrador Retriever',
+  measurements: pet.measurements ?? {
+    backLength: pet.backLength ?? 0,
+    neckGirth: pet.neckGirth ?? 0,
+    chestGirth: pet.chestGirth ?? 0,
+  },
+});
+
 export function PetProfiles() {
   const { user, updatePetProfiles } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -22,8 +33,24 @@ export function PetProfiles() {
     measurements: { backLength: 0, neckGirth: 0, chestGirth: 0 },
   });
 
-  // Safety check — always treat petProfiles as an array
   const petProfiles: PetProfile[] = user?.petProfiles ?? [];
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadPets = async () => {
+      try {
+        const data = await petsAPI.getPets();
+        if (Array.isArray(data)) {
+          updatePetProfiles(data.map(normalizePet).filter(pet => pet.id));
+        }
+      } catch (err) {
+        toast.error('Unable to load pet profiles');
+      }
+    };
+
+    loadPets();
+  }, [user?.id]);
 
   const handleOpenDialog = (pet?: PetProfile) => {
     if (pet) {
@@ -114,7 +141,6 @@ export function PetProfiles() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-          <span className="mr-3">🐾</span>
           My Pets
         </h1>
         <Button onClick={() => handleOpenDialog()}>
@@ -126,7 +152,6 @@ export function PetProfiles() {
       {petProfiles.length === 0 ? (
         <Card className="border-[#E8E4DF]">
           <CardContent className="py-16 text-center">
-            <div className="text-8xl mb-4">🐕</div>
             <p className="text-[#6B5D56] mb-4">No pet profiles yet</p>
             <Button onClick={() => handleOpenDialog()}>Add Your First Pet</Button>
           </CardContent>
@@ -156,15 +181,15 @@ export function PetProfiles() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Back Length:</span>
-                    <span className="font-medium">{pet.measurements.backLength ? `${pet.measurements.backLength} cm` : '—'}</span>
+                    <span className="font-medium">{pet.measurements.backLength ? `${pet.measurements.backLength} cm` : ''}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Neck Girth:</span>
-                    <span className="font-medium">{pet.measurements.neckGirth ? `${pet.measurements.neckGirth} cm` : '—'}</span>
+                    <span className="font-medium">{pet.measurements.neckGirth ? `${pet.measurements.neckGirth} cm` : ''}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Chest Girth:</span>
-                    <span className="font-medium">{pet.measurements.chestGirth ? `${pet.measurements.chestGirth} cm` : '—'}</span>
+                    <span className="font-medium">{pet.measurements.chestGirth ? `${pet.measurements.chestGirth} cm` : ''}</span>
                   </div>
                 </div>
               </CardContent>
@@ -204,10 +229,11 @@ export function PetProfiles() {
             </div>
 
             <div>
-            <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md">
-              💡 Measurements are optional but recommended for a more accurate size recommendation.
+            <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md mb-4">
+              Measurements are optional but recommended for a more accurate size recommendation.
             </p>
-            <Label htmlFor="backLength">Back Length (cm) <span className="text-gray-400 text-xs font-normal">— optional</span></Label>              <Input
+            <Label htmlFor="backLength">Back Length (cm) <span className="text-gray-400 text-xs font-normal">optional</span></Label>
+            <Input
                 id="backLength"
                 type="number"
                 value={formData.measurements.backLength || ''}
@@ -219,7 +245,8 @@ export function PetProfiles() {
             </div>
 
             <div>
-<Label htmlFor="neckGirth">Neck Girth (cm) <span className="text-gray-400 text-xs font-normal">— optional</span></Label>              <Input
+              <Label htmlFor="neckGirth">Neck Girth (cm) <span className="text-gray-400 text-xs font-normal">optional</span></Label>
+              <Input
                 id="neckGirth"
                 type="number"
                 value={formData.measurements.neckGirth || ''}
@@ -231,7 +258,7 @@ export function PetProfiles() {
             </div>
 
             <div>
-<Label htmlFor="chestGirth">Chest Girth (cm) <span className="text-gray-400 text-xs font-normal">— optional</span></Label>
+              <Label htmlFor="chestGirth">Chest Girth (cm) <span className="text-gray-400 text-xs font-normal">optional</span></Label>
               <Input
                 id="chestGirth"
                 type="number"

@@ -74,7 +74,7 @@ export function AdminLayout() {
       `}>
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2 mb-8">
-            <span className="text-2xl">🐾</span>
+            
             <span className="text-xl font-bold text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
               PawFit
             </span>

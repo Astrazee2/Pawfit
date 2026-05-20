@@ -50,7 +50,7 @@ export function Register() {
       <Card className="w-full max-w-md border-[#E8E4DF] rounded-2xl shadow-lg">
         <CardHeader>
           <div className="text-center mb-2">
-            <span className="text-5xl">🐕</span>
+            
           </div>
           <CardTitle className="text-center text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>Create Account</CardTitle>
           <CardDescription className="text-center text-[#6B5D56]">Join the PawFit community</CardDescription>
@@ -86,7 +86,7 @@ export function Register() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder=""
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
@@ -98,7 +98,7 @@ export function Register() {
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••••"
+                placeholder=""
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 required

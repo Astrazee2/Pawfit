@@ -1,8 +1,8 @@
 export type Breed = 'Labrador Retriever' | 'Shih Tzu' | 'Dachshund' | 'Pomeranian' | 'Aspin/Mixed';
 export type ApparelType = 'Shirt' | 'Coat' | 'Sweater' | 'Hoodie';
 export type Size = 'XS' | 'S' | 'M' | 'L' | 'XL';
-export type FitConfidence = 'good' | 'check' | 'custom';
-export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered';
+export type FitConfidence = 'Good Fit' | 'Check Fit' | 'Custom Fit Recommended';
+export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 export type UserRole = 'guest' | 'user' | 'admin';
 
 export interface Measurements {
@@ -34,6 +34,7 @@ export interface CartItem {
   product: Product;
   size: Size;
   quantity: number;
+  cartItemId?: string;
 }
 
 export interface Order {
@@ -57,7 +58,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  petProfiles: PetProfile[];
+  petProfiles?: PetProfile[];
 }
 
 export interface SizeRecommendation {

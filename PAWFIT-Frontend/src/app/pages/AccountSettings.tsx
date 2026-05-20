@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 export function AccountSettings() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const petProfiles = user?.petProfiles ?? [];
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -37,7 +38,6 @@ export function AccountSettings() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        <span className="mr-3">⚙️</span>
         Account Settings
       </h1>
 
@@ -76,7 +76,7 @@ export function AccountSettings() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              You have {user?.petProfiles.length || 0} pet profile{user?.petProfiles.length !== 1 ? 's' : ''}
+              You have {petProfiles.length} pet profile{petProfiles.length !== 1 ? 's' : ''}
             </p>
             <Button variant="outline" onClick={() => navigate('/pets')}>
               Manage Pet Profiles
