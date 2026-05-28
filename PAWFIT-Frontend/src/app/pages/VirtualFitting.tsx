@@ -6,8 +6,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { DogAvatar3D } from '../components/DogAvatar3D';
+import { AvatarWithApparel } from '../components/AvatarWithApparel';
+import { Model3DViewer } from '../components/Model3DViewer';
 import { ApparelType, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
-import { productsAPI, petsAPI } from '../services/api';
+import { productsAPI, petsAPI, assets3DAPI } from '../services/api';
 import { getSizeRecommendation } from '../utils/sizeRecommendation';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -97,6 +99,9 @@ export function VirtualFitting() {
   const [productError, setProductError] = useState('');
   const [petProfilesLoaded, setPetProfilesLoaded] = useState(false);
   const [viewAngle, setViewAngle] = useState<'front' | 'side' | 'back' | 'top'>('front');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [apparelUrl, setApparelUrl] = useState<string>('');
+  const [loadingAssets, setLoadingAssets] = useState(false);
 
   const productId = searchParams.get('product');
   const petProfiles = user?.petProfiles ?? [];
@@ -129,6 +134,43 @@ export function VirtualFitting() {
       setMeasurements(firstPet.measurements ?? { backLength: 0, neckGirth: 0, chestGirth: 0 });
     }
   }, [petProfiles]);
+
+  // Load avatar and apparel assets
+  useEffect(() => {
+    const loadAssets = async () => {
+      try {
+        setLoadingAssets(true);
+        // Get avatar for breed
+        const avatarAssets = await assets3DAPI.getAssetsByTypeAndBreed('avatar', selectedBreed);
+        if (Array.isArray(avatarAssets) && avatarAssets.length > 0) {
+          setAvatarUrl(avatarAssets[0].fileUrl);
+        }
+
+        // Get apparel if product is selected
+        if (selectedProduct?.apparelType) {
+          const apparelAssets = await assets3DAPI.getAssets({
+            type: 'apparel',
+            apparelType: selectedProduct.apparelType
+          });
+          if (Array.isArray(apparelAssets) && apparelAssets.length > 0) {
+            // Filter for compatible breeds
+            const compatible = apparelAssets.find(asset => 
+              !asset.compatible || asset.compatible.length === 0 || asset.compatible.includes(selectedBreed)
+            );
+            setApparelUrl(compatible?.fileUrl ?? apparelAssets[0]?.fileUrl ?? '');
+          }
+        } else {
+          setApparelUrl('');
+        }
+      } catch (err) {
+        console.error('Failed to load 3D assets:', err);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+
+    loadAssets();
+  }, [selectedBreed, selectedProduct]);
 
   useEffect(() => {
     const result = getSizeRecommendation(
@@ -240,39 +282,66 @@ export function VirtualFitting() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>3D Preview</CardTitle>
+              <CardTitle>
+                {selectedProduct ? '👗 Virtual Try-On' : '🐕 3D Avatar Preview'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
-                <DogAvatar3D breed={selectedBreed} />
+              <div className="aspect-square rounded-lg mb-4 overflow-hidden">
+                {loadingAssets ? (
+                  <div className="w-full h-full bg-[#FAF7F2] flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin mb-2">
+                        <div className="w-8 h-8 border-4 border-[#C4714A] border-t-transparent rounded-full"></div>
+                      </div>
+                      <p className="text-sm text-[#6B5D56]">Loading 3D models...</p>
+                    </div>
+                  </div>
+                ) : avatarUrl ? (
+                  selectedProduct ? (
+                    <AvatarWithApparel
+                      avatarUrl={avatarUrl}
+                      apparelUrl={apparelUrl}
+                      breed={selectedBreed}
+                      scale={1}
+                      apparelScale={1}
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <Model3DViewer
+                      modelUrl={avatarUrl}
+                      scale={1}
+                      autoRotate={true}
+                      className="w-full h-full"
+                    />
+                  )
+                ) : (
+                  <div className="w-full h-full bg-[#FAF7F2] flex items-center justify-center">
+                    <p className="text-sm text-[#6B5D56]">No 3D avatar available for {selectedBreed}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-center gap-2">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="text-[#5C3D2E] border-[#5C3D2E]">
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset View
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="text-[#5C3D2E] border-[#5C3D2E]">
                   <ZoomIn className="w-4 h-4" />
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="text-[#5C3D2E] border-[#5C3D2E]">
                   <ZoomOut className="w-4 h-4" />
                 </Button>
               </div>
 
-              <div className="flex justify-center gap-2 mt-4">
-                {(['front', 'side', 'back', 'top'] as const).map(angle => (
-                  <Button
-                    key={angle}
-                    size="sm"
-                    variant={viewAngle === angle ? 'default' : 'outline'}
-                    onClick={() => setViewAngle(angle)}
-                    className={viewAngle === angle ? 'bg-[#5C3D2E]' : 'border-[#5C3D2E] text-[#5C3D2E]'}
-                  >
-                    {angle.charAt(0).toUpperCase() + angle.slice(1)}
-                  </Button>
-                ))}
-              </div>
+              {selectedProduct && (
+                <div className="mt-4 p-3 bg-[#FFF5E1] border border-[#FFDBB3] rounded-lg">
+                  <p className="text-xs text-[#5C3D2E] font-medium">
+                    💡 Tip: Drag to rotate • Scroll to zoom • Double-click to reset
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

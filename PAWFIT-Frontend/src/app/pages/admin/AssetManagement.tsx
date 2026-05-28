@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Plus, Upload, Trash2, Edit, Package } from 'lucide-react';
 import { Breed, ApparelType, Product } from '../../types';
 import { productsAPI, assets3DAPI } from '../../services/api';
+import { Model3DViewer } from '../../components/Model3DViewer';
 import { toast } from 'sonner';
 
 interface Asset3D {
@@ -434,6 +435,17 @@ export function AssetManagement() {
               />
               <p className="text-xs text-[#6B5D56] mt-1">Upload your file to a hosting service and paste the URL</p>
             </div>
+
+            {formData.fileUrl && (
+              <div>
+                <Label>3D Model Preview</Label>
+                <Model3DViewer
+                  modelUrl={formData.fileUrl}
+                  scale={parseFloat(formData.scale)}
+                  className="w-full h-80"
+                />
+              </div>
+            )}
 
             <div>
               <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
