@@ -31,6 +31,22 @@ const orderSchema = new mongoose.Schema({
     province: String,
     zipCode: String,
     phone: String
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['COD', 'GCash', 'PayPal'],
+    default: 'COD'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'pending'
+  },
+  paymentId: String,
+  paymentDetails: {
+    transactionId: String,
+    provider: String,
+    paidAt: Date
   }
 }, {
   timestamps: true

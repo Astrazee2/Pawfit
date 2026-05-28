@@ -192,3 +192,62 @@ export const ordersAPI = {
     return jsonOrThrow(res)
   }
 }
+
+// ==================== ASSETS 3D ====================
+export const assets3DAPI = {
+  getAssets: async (filters?: any) => {
+    const params = new URLSearchParams(filters).toString()
+    const res = await fetch(`${BASE_URL}/assets-3d?${params}`)
+    return jsonOrThrow(res)
+  },
+
+  getAssetById: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/${id}`)
+    return jsonOrThrow(res)
+  },
+
+  getAssetsByTypeAndBreed: async (type: string, breed: string) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/type-breed/${type}/${breed}`)
+    return jsonOrThrow(res)
+  },
+
+  createAsset: async (assetData: any) => {
+    const res = await fetch(`${BASE_URL}/assets-3d`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(assetData)
+    })
+    return jsonOrThrow(res)
+  },
+
+  updateAsset: async (id: string, assetData: any) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(assetData)
+    })
+    return jsonOrThrow(res)
+  },
+
+  deleteAsset: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
+    return jsonOrThrow(res)
+  },
+
+  getCompatibleApparel: async (breed: string) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/compatible/${breed}`)
+    return jsonOrThrow(res)
+  },
+
+  checkCompatibility: async (apparelId: string, breed: string) => {
+    const res = await fetch(`${BASE_URL}/assets-3d/check-compatibility`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ apparelId, breed })
+    })
+    return jsonOrThrow(res)
+  }
+}

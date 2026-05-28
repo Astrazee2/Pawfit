@@ -7,6 +7,8 @@ import petRoutes from './routes/pets.js'
 import productRoutes from './routes/products.js'
 import cartRoutes from './routes/cart.js'
 import orderRoutes from './routes/orders.js'
+import paymentRoutes from './routes/payment.js'
+import assets3DRoutes from './routes/assets3D.js'
 
 
 
@@ -22,6 +24,8 @@ app.use('/api/pets', petRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/cart', cartRoutes)
 app.use('/api/orders', orderRoutes)
+app.use('/api/payments', paymentRoutes)
+app.use('/api/assets-3d', assets3DRoutes)
 
 
 // Test route

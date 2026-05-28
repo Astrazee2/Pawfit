@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,13 @@ import { Label } from '../components/ui/label';
 import { ShippingInfo } from '../types';
 import { toast } from 'sonner';
 import { ordersAPI } from '../services/api';
+import { Loader2 } from 'lucide-react';
+
+declare global {
+  interface Window {
+    paypal?: any;
+  }
+}
 
 export function Checkout() {
   const navigate = useNavigate();
@@ -21,15 +28,35 @@ export function Checkout() {
     contactNumber: '',
   });
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [paypalReady, setPaypalReady] = useState(false);
 
-  const handlePlaceOrder = async () => {
+  // Load PayPal SDK
+  useEffect(() => {
+    if (!window.paypal) {
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.REACT_APP_PAYPAL_CLIENT_ID}`;
+      script.async = true;
+      script.onload = () => {
+        setPaypalReady(true);
+      };
+      document.head.appendChild(script);
+    } else {
+      setPaypalReady(true);
+    }
+  }, []);
+
+  const handleCreateOrder = async () => {
     if (!shippingInfo.name || !shippingInfo.address || !shippingInfo.contactNumber) {
       toast.error('Please fill in all shipping information');
       return;
     }
 
+    setLoading(true);
     try {
-      const order = await ordersAPI.createOrder({
+      // First create the order in the database
+      const createdOrder = await ordersAPI.createOrder({
         items: cart.map(item => ({
           product: item.product.id,
           size: item.size,
@@ -42,12 +69,71 @@ export function Checkout() {
           address: shippingInfo.address,
           phone: shippingInfo.contactNumber,
         },
+        paymentMethod: paymentMethod,
       });
 
-      await clearCart();
-      navigate(`/order-confirmation/${order._id || order.id}`);
+      setOrderId(createdOrder._id || createdOrder.id);
+
+      if (paymentMethod === 'COD') {
+        await clearCart();
+        navigate(`/order-confirmation/${createdOrder._id || createdOrder.id}`);
+        toast.success('Order placed successfully!');
+      } else if (paymentMethod === 'PayPal') {
+        handlePayPalPayment(createdOrder._id || createdOrder.id);
+      } else if (paymentMethod === 'GCash') {
+        handleGCashPayment(createdOrder._id || createdOrder.id);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to place order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayPalPayment = async (createdOrderId: string) => {
+    try {
+      // Get PayPal order details
+      const paypalOrderResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/paypal/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ orderId: createdOrderId })
+      });
+
+      const paypalOrder = await paypalOrderResponse.json();
+      
+      if (paypalOrder.link) {
+        // Redirect to PayPal
+        window.location.href = paypalOrder.link;
+      }
+    } catch (err) {
+      toast.error('Failed to process PayPal payment');
+    }
+  };
+
+  const handleGCashPayment = async (createdOrderId: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/gcash/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ 
+          orderId: createdOrderId,
+          amount: cartTotal + 5
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    } catch (err) {
+      toast.error('Failed to process GCash payment');
     }
   };
 
@@ -120,7 +206,7 @@ export function Checkout() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {['COD', 'GCash', 'Credit Card'].map((method) => (
+                {['COD', 'GCash', 'PayPal'].map((method) => (
                   <label key={method} className="flex items-center gap-3 p-3 border rounded cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
@@ -128,10 +214,16 @@ export function Checkout() {
                       value={method}
                       checked={paymentMethod === method}
                       onChange={(e) => setPaymentMethod(e.target.value)}
+                      disabled={loading}
                     />
-                    <span>{method}</span>
+                    <span className={loading ? 'text-gray-400' : ''}>{method}</span>
                   </label>
                 ))}
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200 text-sm text-blue-700">
+                {paymentMethod === 'COD' && 'Pay when you receive your order'}
+                {paymentMethod === 'PayPal' && 'You will be redirected to PayPal to complete payment'}
+                {paymentMethod === 'GCash' && 'You will be redirected to GCash payment gateway'}
               </div>
             </CardContent>
           </Card>
@@ -172,8 +264,20 @@ export function Checkout() {
                 </div>
               </div>
 
-              <Button onClick={handlePlaceOrder} className="w-full bg-[#5C3D2E] hover:bg-[#4A3024] rounded-xl" size="lg">
-                Place Order
+              <Button 
+                onClick={handleCreateOrder} 
+                className="w-full bg-[#5C3D2E] hover:bg-[#4A3024] rounded-xl" 
+                size="lg"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `${paymentMethod === 'COD' ? 'Place Order' : 'Continue to Payment'}`
+                )}
               </Button>
             </CardContent>
           </Card>

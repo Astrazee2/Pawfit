@@ -4,13 +4,15 @@ import Cart from '../models/Cart.js'
 // Create order
 export const createOrder = async (req, res) => {
   try {
-    const { items, totalAmount, shippingAddress } = req.body
+    const { items, totalAmount, shippingAddress, paymentMethod } = req.body
 
     const order = await Order.create({
       user: req.user.id,
       items,
       totalAmount,
-      shippingAddress
+      shippingAddress,
+      paymentMethod: paymentMethod || 'COD',
+      paymentStatus: paymentMethod === 'COD' ? 'pending' : 'pending'
     })
 
     // Clear cart after order
