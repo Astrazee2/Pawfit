@@ -18,7 +18,6 @@ PawFit enables users to:
 - Select their dog's breed from five supported breeds
 - Optionally input their dog's measurements (back length, neck girth, chest girth)
 - Visualize selected apparel on a breed-specific 3D dog avatar
-- Receive a personalized size recommendation with a confidence indicator
 - Add items to cart and complete a simulated checkout
 
 ---
@@ -28,7 +27,6 @@ PawFit enables users to:
 | Breed | Body Type |
 |---|---|
 | Labrador Retriever | Large-bodied, deep-chested |
-| Shih Tzu | Compact, low-slung |
 | Dachshund | Elongated, short-legged |
 | Pomeranian | Small, densely coated |
 | Aspin / Mixed Breed | Median measurement ranges |
@@ -92,19 +90,6 @@ Each folder has its own README with setup instructions:
 
 ---
 
-## 📐 Size Recommendation Algorithm
-
-PawFit uses a **rule-based size recommendation algorithm** that:
-
-1. Accepts three measurements as input: back length, neck girth, and chest girth
-2. Compares inputs against breed-specific threshold tables derived from empirical measurement data
-3. Returns a size category (XS, S, M, L, or XL)
-4. Returns a confidence state:
-   - ✅ **Good Fit** — measurements fall within the central range of a size category
-   - ⚠️ **Check Fit** — measurements fall within 5% of a size boundary
-   - 📏 **Custom Fit Recommended** — measurements exceed the maximum range for the breed
-
----
 
 ## 🚀 Getting Started
 
