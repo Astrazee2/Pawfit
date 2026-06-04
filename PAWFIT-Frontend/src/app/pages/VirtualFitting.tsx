@@ -45,7 +45,7 @@ type BackendPet = {
   measurements?: Measurements;
 };
 
-const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 
 const apparelTypeLabels: Record<string, ApparelType> = {
   shirt: 'Shirt',
@@ -101,6 +101,7 @@ export function VirtualFitting() {
   const [viewAngle, setViewAngle] = useState<'front' | 'side' | 'back' | 'top'>('front');
   const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [apparelUrl, setApparelUrl] = useState<string>('');
+  const [preCombinedUrl, setPreCombinedUrl] = useState<string>('');
   const [loadingAssets, setLoadingAssets] = useState(false);
 
   const productId = searchParams.get('product');
@@ -140,6 +141,31 @@ export function VirtualFitting() {
     const loadAssets = async () => {
       try {
         setLoadingAssets(true);
+        
+        // Check for pre-combined model first if product is selected
+        if (selectedProduct?.apparelType) {
+          try {
+            // Query for pre-combined models matching breed and apparel type
+            const preCombinedAssets = await assets3DAPI.getAssets({
+              type: 'pre-combined',
+              breed: selectedBreed,
+              apparelType: selectedProduct.apparelType
+            });
+            
+            if (Array.isArray(preCombinedAssets) && preCombinedAssets.length > 0) {
+              setPreCombinedUrl(preCombinedAssets[0].fileUrl);
+              setAvatarUrl('');
+              setApparelUrl('');
+              setLoadingAssets(false);
+              return; // Use pre-combined model, skip avatar/apparel loading
+            }
+          } catch (err) {
+            console.log('No pre-combined model found, falling back to separate models');
+          }
+        }
+
+        setPreCombinedUrl(''); // No pre-combined model found
+        
         // Get avatar for breed
         const avatarAssets = await assets3DAPI.getAssetsByTypeAndBreed('avatar', selectedBreed);
         if (Array.isArray(avatarAssets) && avatarAssets.length > 0) {
@@ -297,6 +323,14 @@ export function VirtualFitting() {
                       <p className="text-sm text-[#6B5D56]">Loading 3D models...</p>
                     </div>
                   </div>
+                ) : preCombinedUrl ? (
+                  // Display pre-combined model
+                  <Model3DViewer
+                    modelUrl={preCombinedUrl}
+                    scale={1}
+                    autoRotate={true}
+                    className="w-full h-full"
+                  />
                 ) : avatarUrl ? (
                   selectedProduct ? (
                     <AvatarWithApparel

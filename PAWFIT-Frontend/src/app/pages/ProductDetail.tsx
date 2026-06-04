@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { productsAPI } from '../services/api';
+import { productsAPI, assets3DAPI } from '../services/api';
 import { Product, Size } from '../types';
 import { normalizeProduct } from '../utils/dataMappers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { Model3DViewer } from '../components/Model3DViewer';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,6 +21,8 @@ export function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [model3DUrl, setModel3DUrl] = useState<string>('');
+  const [loading3D, setLoading3D] = useState(false);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -55,6 +58,37 @@ export function ProductDetail() {
 
     loadProduct();
   }, [id]);
+
+  // Load 3D preview model
+  useEffect(() => {
+    if (!product) return;
+
+    const load3DModel = async () => {
+      try {
+        setLoading3D(true);
+        // Try to find pre-combined models for this product
+        const assets = await assets3DAPI.getAssets({
+          type: 'pre-combined',
+          productId: product.id
+        });
+
+        if (Array.isArray(assets) && assets.length > 0) {
+          setModel3DUrl(assets[0].fileUrl);
+        } else {
+          // Fall back to product's own GLB asset if available
+          if (product.glbAsset) {
+            setModel3DUrl(product.glbAsset);
+          }
+        }
+      } catch (err) {
+        console.log('Could not load 3D model');
+      } finally {
+        setLoading3D(false);
+      }
+    };
+
+    load3DModel();
+  }, [product]);
 
   if (loading) {
     return (
@@ -105,9 +139,21 @@ export function ProductDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div>
-          <div className="aspect-square bg-gray-200 rounded-lg mb-4 overflow-hidden">
-            {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
-          </div>
+          {model3DUrl ? (
+            <div className="mb-4">
+              <div className="text-sm font-medium text-[#5C3D2E] mb-2">3D Preview</div>
+              <Model3DViewer
+                modelUrl={model3DUrl}
+                scale={1}
+                autoRotate={true}
+                className="w-full h-96 lg:h-full"
+              />
+            </div>
+          ) : (
+            <div className="aspect-square bg-gray-200 rounded-lg mb-4 overflow-hidden">
+              {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
+            </div>
+          )}
           <div className="grid grid-cols-4 gap-2">
             {(product.images.length ? product.images : ['', '', '', '']).slice(0, 4).map((image, i) => (
               <div key={`${image}-${i}`} className="aspect-square bg-gray-200 rounded cursor-pointer hover:opacity-75 overflow-hidden">

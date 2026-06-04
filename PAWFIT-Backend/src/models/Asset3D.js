@@ -8,12 +8,12 @@ const asset3DSchema = new mongoose.Schema({
   description: String,
   type: {
     type: String,
-    enum: ['avatar', 'apparel'],
+    enum: ['avatar', 'apparel', 'pre-combined'],
     required: true
   },
   breed: {
     type: String,
-    enum: ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed']
+    enum: ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed']
   },
   apparelType: {
     type: String,
@@ -63,7 +63,13 @@ const asset3DSchema = new mongoose.Schema({
     default: 1
   },
   tags: [String],
-  compatible: [String]
+  compatible: [String],
+  // For pre-combined models: which dog breed is wearing which apparel
+  preCombinedInfo: {
+    dogBreed: String,
+    apparelType: String,
+    apparelName: String
+  }
 }, {
   timestamps: true
 })

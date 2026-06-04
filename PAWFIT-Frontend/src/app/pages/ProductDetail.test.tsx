@@ -22,7 +22,7 @@ const mockProduct = {
   apparelType: 'Shirt',
   images: ['image1.jpg', 'image2.jpg'],
   sizesAvailable: ['XS', 'S', 'M', 'L', 'XL'],
-  breedCompatibility: ['Labrador Retriever', 'Shih Tzu'],
+  breedCompatibility: ['Labrador Retriever', 'Dachshund'],
   glbAsset: 'model.glb'
 };
 

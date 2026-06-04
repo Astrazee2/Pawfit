@@ -10,7 +10,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { petsAPI } from '../services/api';
 
-const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 
 const normalizePet = (pet: any): PetProfile => ({
   id: pet.id ?? pet._id ?? '',

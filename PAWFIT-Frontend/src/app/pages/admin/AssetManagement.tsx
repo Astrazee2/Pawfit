@@ -7,15 +7,14 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Plus, Upload, Trash2, Edit, Package } from 'lucide-react';
 import { Breed, ApparelType, Product } from '../../types';
-import { productsAPI, assets3DAPI } from '../../services/api';
-import { Model3DViewer } from '../../components/Model3DViewer';
+import { productsAPI } from '../../services/api';
 import { toast } from 'sonner';
 
 interface Asset3D {
   id: string;
   name: string;
   description?: string;
-  type: 'avatar' | 'apparel';
+  type: 'avatar' | 'apparel' | 'pre-combined';
   breed?: Breed;
   apparelType?: ApparelType;
   productId?: string;
@@ -30,12 +29,17 @@ interface Asset3D {
   uploadDate: string;
   compatible?: Breed[];
   createdAt?: string;
+  preCombinedInfo?: {
+    dogBreed?: string;
+    apparelType?: string;
+    apparelName?: string;
+  };
 }
 
 interface AssetForm {
   name: string;
   description: string;
-  type: 'avatar' | 'apparel';
+  type: 'avatar' | 'apparel' | 'pre-combined';
   breed?: Breed;
   apparelType?: ApparelType;
   productId?: string;
@@ -44,9 +48,12 @@ interface AssetForm {
   scale: string;
   compatible: Breed[];
   tags: string;
+  preCombinedDogBreed?: Breed;
+  preCombinedApparelType?: ApparelType;
+  preCombinedApparelName?: string;
 }
 
-const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 const apparelTypes: ApparelType[] = ['Shirt', 'Coat', 'Sweater', 'Hoodie'];
 
 const initialForm: AssetForm = {
@@ -60,38 +67,68 @@ const initialForm: AssetForm = {
   thumbnailUrl: '',
   scale: '1',
   compatible: [],
-  tags: ''
+  tags: '',
+  preCombinedDogBreed: undefined,
+  preCombinedApparelType: undefined,
+  preCombinedApparelName: ''
 };
 
 export function AssetManagement() {
-  const [assets, setAssets] = useState<Asset3D[]>([]);
+  const [assets, setAssets] = useState<Asset3D[]>([
+    {
+      id: '1',
+      name: 'Labrador Avatar',
+      type: 'avatar',
+      breed: 'Labrador Retriever',
+      fileUrl: 'https://example.com/labrador.glb',
+      fileName: 'labrador.glb',
+      fileSize: 2300000,
+      format: 'glb',
+      uploadDate: '2026-04-15',
+    },
+    {
+      id: '2',
+      name: 'Premium Tee - Shirt',
+      type: 'apparel',
+      apparelType: 'Shirt',
+      fileUrl: 'https://example.com/tee-shirt.glb',
+      fileName: 'tee-shirt.glb',
+      fileSize: 1200000,
+      format: 'glb',
+      uploadDate: '2026-04-16',
+      compatible: ['Labrador Retriever', 'Dachshund'],
+    },
+    {
+      id: '3',
+      name: 'Winter Coat - Coat',
+      type: 'apparel',
+      apparelType: 'Coat',
+      fileUrl: 'https://example.com/winter-coat.glb',
+      fileName: 'winter-coat.glb',
+      fileSize: 1500000,
+      format: 'glb',
+      uploadDate: '2026-04-16',
+      compatible: ['Labrador Retriever', 'Shih Tzu'],
+    },
+  ]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset3D | null>(null);
   const [formData, setFormData] = useState<AssetForm>(initialForm);
-  const [filterType, setFilterType] = useState<'all' | 'avatar' | 'apparel'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'avatar' | 'apparel' | 'pre-combined'>('all');
   const [loading, setLoading] = useState(false);
-  const [assetsLoading, setAssetsLoading] = useState(true);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadProducts = async () => {
       try {
-        setAssetsLoading(true);
-        const [assetsData, productsData] = await Promise.all([
-          assets3DAPI.getAssets(),
-          productsAPI.getProducts()
-        ]);
-        setAssets(Array.isArray(assetsData) ? assetsData : []);
-        setProducts(Array.isArray(productsData) ? productsData : []);
+        const data = await productsAPI.getProducts();
+        setProducts(Array.isArray(data) ? data : []);
       } catch (err) {
-        toast.error('Unable to load data');
-        console.error(err);
-      } finally {
-        setAssetsLoading(false);
+        toast.error('Unable to load products');
       }
     };
-    loadData();
+    loadProducts();
   }, []);
 
   const handleOpenDialog = (asset?: Asset3D) => {
@@ -108,19 +145,20 @@ export function AssetManagement() {
         thumbnailUrl: asset.thumbnailUrl || '',
         scale: String(asset.scale || 1),
         compatible: asset.compatible || [],
-        tags: ''
+        tags: '',
+        preCombinedDogBreed: asset.preCombinedInfo?.dogBreed as Breed | undefined,
+        preCombinedApparelType: asset.preCombinedInfo?.apparelType as ApparelType | undefined,
+        preCombinedApparelName: asset.preCombinedInfo?.apparelName || ''
       });
-      setThumbnailPreview(asset.thumbnailUrl || '');
     } else {
       setFormData(initialForm);
-      setThumbnailPreview('');
     }
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.name || !formData.fileUrl) {
-      toast.error('Please fill in required fields (name, file URL)');
+      toast.error('Please fill in required fields');
       return;
     }
 
@@ -134,9 +172,18 @@ export function AssetManagement() {
       return;
     }
 
+    if (formData.type === 'pre-combined') {
+      if (!formData.preCombinedDogBreed || !formData.preCombinedApparelType) {
+        toast.error('Pre-combined model must specify dog breed and apparel type');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const assetPayload = {
+      // In a real implementation, this would call the backend API
+      const newAsset: Asset3D = {
+        id: editingAsset?.id || String(Date.now()),
         name: formData.name,
         description: formData.description,
         type: formData.type,
@@ -146,26 +193,27 @@ export function AssetManagement() {
         fileUrl: formData.fileUrl,
         fileName: formData.fileUrl.split('/').pop() || 'asset.glb',
         fileSize: 0,
-        format: 'glb' as const,
+        format: 'glb',
         thumbnailUrl: formData.thumbnailUrl,
         scale: parseFloat(formData.scale),
         compatible: formData.compatible,
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : []
+        uploadDate: new Date().toISOString().split('T')[0],
+        preCombinedInfo: formData.type === 'pre-combined' ? {
+          dogBreed: formData.preCombinedDogBreed,
+          apparelType: formData.preCombinedApparelType,
+          apparelName: formData.preCombinedApparelName
+        } : undefined
       };
 
       if (editingAsset) {
-        const updated = await assets3DAPI.updateAsset(editingAsset.id, assetPayload);
-        setAssets(assets.map(a => a.id === editingAsset.id ? updated : a));
+        setAssets(assets.map(a => a.id === editingAsset.id ? newAsset : a));
         toast.success('Asset updated successfully');
       } else {
-        const created = await assets3DAPI.createAsset(assetPayload);
-        setAssets([created, ...assets]);
+        setAssets([newAsset, ...assets]);
         toast.success('Asset uploaded successfully');
       }
 
       setDialogOpen(false);
-      setFormData(initialForm);
-      setThumbnailPreview('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save asset');
     } finally {
@@ -173,14 +221,9 @@ export function AssetManagement() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await assets3DAPI.deleteAsset(id);
-      setAssets(assets.filter(a => a.id !== id));
-      toast.success('Asset deleted successfully');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete asset');
-    }
+  const handleDelete = (id: string) => {
+    setAssets(assets.filter(a => a.id !== id));
+    toast.success('Asset deleted');
   };
 
   const toggleCompatibleBreed = (breed: Breed) => {
@@ -208,7 +251,7 @@ export function AssetManagement() {
       </div>
 
       <div className="mb-6 flex gap-2">
-        {(['all', 'avatar', 'apparel'] as const).map(type => (
+        {(['all', 'avatar', 'apparel', 'pre-combined'] as const).map(type => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
@@ -218,19 +261,14 @@ export function AssetManagement() {
                 : 'border border-[#E8E4DF] text-[#6B5D56] hover:bg-[#FAF7F2]'
             }`}
           >
-            {type === 'all' ? 'All Assets' : type === 'avatar' ? 'Dog Avatars' : 'Clothing'}
+            {type === 'all' ? 'All Assets' : type === 'avatar' ? 'Dog Avatars' : type === 'apparel' ? 'Clothing' : 'Pre-Combined'}
           </button>
         ))}
       </div>
 
       <Card className="border-0 shadow-sm rounded-3xl">
         <CardContent className="p-0">
-          {assetsLoading ? (
-            <div className="p-12 text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 text-[#C4714A] animate-pulse" />
-              <p className="text-[#6B5D56]">Loading assets...</p>
-            </div>
-          ) : assets.length === 0 ? (
+          {assets.length === 0 ? (
             <div className="p-12 text-center">
               <Package className="w-12 h-12 mx-auto mb-4 text-[#C4714A]" />
               <p className="text-[#6B5D56]">No 3D assets yet. Upload your first model!</p>
@@ -258,8 +296,8 @@ export function AssetManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={asset.type === 'avatar' ? 'default' : 'secondary'} className="capitalize">
-                          {asset.type}
+                        <Badge variant={asset.type === 'avatar' ? 'default' : asset.type === 'apparel' ? 'secondary' : 'outline'} className="capitalize">
+                          {asset.type === 'pre-combined' ? 'Pre-Combined' : asset.type}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
@@ -274,6 +312,15 @@ export function AssetManagement() {
                                 <p className="text-xs text-[#8B7B74]">
                                   Compatible: {asset.compatible.slice(0, 2).join(', ')}{asset.compatible.length > 2 ? '...' : ''}
                                 </p>
+                              )}
+                            </>
+                          )}
+                          {asset.type === 'pre-combined' && asset.preCombinedInfo && (
+                            <>
+                              <p className="text-[#6B5D56]">Breed: {asset.preCombinedInfo.dogBreed}</p>
+                              <p className="text-[#6B5D56]">Apparel: {asset.preCombinedInfo.apparelType}</p>
+                              {asset.preCombinedInfo.apparelName && (
+                                <p className="text-xs text-[#8B7B74]">{asset.preCombinedInfo.apparelName}</p>
                               )}
                             </>
                           )}
@@ -346,18 +393,21 @@ export function AssetManagement() {
                   id="type"
                   value={formData.type}
                   onChange={(e) => {
-                    const type = e.target.value as 'avatar' | 'apparel';
+                    const type = e.target.value as 'avatar' | 'apparel' | 'pre-combined';
                     setFormData({
                       ...formData,
                       type,
                       breed: type === 'avatar' ? 'Labrador Retriever' : undefined,
-                      apparelType: type === 'apparel' ? 'Shirt' : undefined
+                      apparelType: type === 'apparel' ? 'Shirt' : undefined,
+                      preCombinedDogBreed: type === 'pre-combined' ? 'Labrador Retriever' : undefined,
+                      preCombinedApparelType: type === 'pre-combined' ? 'Shirt' : undefined
                     });
                   }}
                   className="w-full p-2 border border-[#E8E4DF] rounded-lg"
                 >
                   <option value="avatar">Dog Avatar</option>
                   <option value="apparel">Clothing Item</option>
+                  <option value="pre-combined">Pre-Combined Model</option>
                 </select>
               </div>
 
@@ -375,7 +425,7 @@ export function AssetManagement() {
                     ))}
                   </select>
                 </div>
-              ) : (
+              ) : formData.type === 'apparel' ? (
                 <div>
                   <Label htmlFor="apparelType">Clothing Type *</Label>
                   <select
@@ -386,6 +436,25 @@ export function AssetManagement() {
                   >
                     {apparelTypes.map(type => (
                       <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="preCombinedDogBreed">Dog Breed *</Label>
+                  <select
+                    id="preCombinedDogBreed"
+                    value={formData.preCombinedDogBreed || ''}
+                    onChange={(e) => setFormData({ ...formData, preCombinedDogBreed: e.target.value as Breed })}
+                    className="w-full p-2 border border-[#E8E4DF] rounded-lg"
+                  >
+                    {breeds.map(breed => (
+                      <option key={breed} value={breed}>{breed}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
                     ))}
                   </select>
                 </div>
@@ -425,49 +494,72 @@ export function AssetManagement() {
               </>
             )}
 
+            {formData.type === 'pre-combined' && (
+              <>
+                <div>
+                  <Label htmlFor="preCombinedApparelType">Apparel Type *</Label>
+                  <select
+                    id="preCombinedApparelType"
+                    value={formData.preCombinedApparelType || ''}
+                    onChange={(e) => setFormData({ ...formData, preCombinedApparelType: e.target.value as ApparelType })}
+                    className="w-full p-2 border border-[#E8E4DF] rounded-lg"
+                  >
+                    {apparelTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="preCombinedApparelName">Apparel Name</Label>
+                  <Input
+                    id="preCombinedApparelName"
+                    value={formData.preCombinedApparelName}
+                    onChange={(e) => setFormData({ ...formData, preCombinedApparelName: e.target.value })}
+                    placeholder="e.g., Premium Tee, Winter Jacket"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="productId">Product ID (Optional)</Label>
+                  <select
+                    id="productId"
+                    value={formData.productId || ''}
+                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    className="w-full p-2 border border-[#E8E4DF] rounded-lg"
+                  >
+                    <option value="">-- Link to Product (Optional) --</option>
+                    {products.map(product => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
             <div>
               <Label htmlFor="fileUrl">GLB/glTF File URL *</Label>
               <Input
                 id="fileUrl"
                 value={formData.fileUrl}
                 onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-                placeholder="https://example.com/asset.glb"
+                placeholder="/models/labrador-blue-shirt.glb"
               />
-              <p className="text-xs text-[#6B5D56] mt-1">Upload your file to a hosting service and paste the URL</p>
+              <p className="text-xs text-[#6B5D56] mt-1">
+                Backend URL format: <code className="bg-gray-100 px-1 rounded">/models/filename.glb</code> or <code className="bg-gray-100 px-1 rounded">http://localhost:5000/models/filename.glb</code>
+              </p>
             </div>
-
-            {formData.fileUrl && (
-              <div>
-                <Label>3D Model Preview</Label>
-                <Model3DViewer
-                  modelUrl={formData.fileUrl}
-                  scale={parseFloat(formData.scale)}
-                  className="w-full h-80"
-                />
-              </div>
-            )}
 
             <div>
               <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
               <Input
                 id="thumbnailUrl"
                 value={formData.thumbnailUrl}
-                onChange={(e) => {
-                  setFormData({ ...formData, thumbnailUrl: e.target.value });
-                  setThumbnailPreview(e.target.value);
-                }}
-                placeholder="https://example.com/thumbnail.jpg"
+                onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
+                placeholder="/assets/labrador-blue-shirt-thumb.png"
               />
-              {thumbnailPreview && (
-                <div className="mt-3 rounded-lg overflow-hidden border border-[#E8E4DF] max-w-sm">
-                  <img 
-                    src={thumbnailPreview} 
-                    alt="Thumbnail preview" 
-                    className="w-full h-32 object-cover"
-                    onError={() => setThumbnailPreview('')}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="flex gap-2">

@@ -24,7 +24,6 @@ const productSchema = new mongoose.Schema(
         type: String,
         enum: [
           "Labrador Retriever",
-          "Shih Tzu",
           "Dachshund",
           "Pomeranian",
           "Aspin/Mixed",

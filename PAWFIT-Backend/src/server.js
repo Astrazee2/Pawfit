@@ -18,6 +18,10 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+// Serve static files (GLB models, thumbnails, etc.)
+app.use('/assets', express.static('public/assets'))
+app.use('/models', express.static('public/models'))
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/pets', petRoutes)
