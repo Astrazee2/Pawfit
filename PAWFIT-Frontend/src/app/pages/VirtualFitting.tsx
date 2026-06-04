@@ -9,7 +9,7 @@ import { DogAvatar3D } from '../components/DogAvatar3D';
 import { AvatarWithApparel } from '../components/AvatarWithApparel';
 import { Model3DViewer } from '../components/Model3DViewer';
 import { ApparelType, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
-import { productsAPI, petsAPI, assets3DAPI } from '../services/api';
+import { productsAPI, petsAPI } from '../services/api';
 import { getSizeRecommendation } from '../utils/sizeRecommendation';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -136,67 +136,22 @@ export function VirtualFitting() {
     }
   }, [petProfiles]);
 
-  // Load avatar and apparel assets
+  // Load 3D model from product
   useEffect(() => {
-    const loadAssets = async () => {
-      try {
-        setLoadingAssets(true);
-        
-        // Check for pre-combined model first if product is selected
-        if (selectedProduct?.apparelType) {
-          try {
-            // Query for pre-combined models matching breed and apparel type
-            const preCombinedAssets = await assets3DAPI.getAssets({
-              type: 'pre-combined',
-              breed: selectedBreed,
-              apparelType: selectedProduct.apparelType
-            });
-            
-            if (Array.isArray(preCombinedAssets) && preCombinedAssets.length > 0) {
-              setPreCombinedUrl(preCombinedAssets[0].fileUrl);
-              setAvatarUrl('');
-              setApparelUrl('');
-              setLoadingAssets(false);
-              return; // Use pre-combined model, skip avatar/apparel loading
-            }
-          } catch (err) {
-            console.log('No pre-combined model found, falling back to separate models');
-          }
-        }
-
-        setPreCombinedUrl(''); // No pre-combined model found
-        
-        // Get avatar for breed
-        const avatarAssets = await assets3DAPI.getAssetsByTypeAndBreed('avatar', selectedBreed);
-        if (Array.isArray(avatarAssets) && avatarAssets.length > 0) {
-          setAvatarUrl(avatarAssets[0].fileUrl);
-        }
-
-        // Get apparel if product is selected
-        if (selectedProduct?.apparelType) {
-          const apparelAssets = await assets3DAPI.getAssets({
-            type: 'apparel',
-            apparelType: selectedProduct.apparelType
-          });
-          if (Array.isArray(apparelAssets) && apparelAssets.length > 0) {
-            // Filter for compatible breeds
-            const compatible = apparelAssets.find(asset => 
-              !asset.compatible || asset.compatible.length === 0 || asset.compatible.includes(selectedBreed)
-            );
-            setApparelUrl(compatible?.fileUrl ?? apparelAssets[0]?.fileUrl ?? '');
-          }
-        } else {
-          setApparelUrl('');
-        }
-      } catch (err) {
-        console.error('Failed to load 3D assets:', err);
-      } finally {
-        setLoadingAssets(false);
-      }
-    };
-
-    loadAssets();
-  }, [selectedBreed, selectedProduct]);
+    setLoadingAssets(false);
+    
+    // Use product's GLB asset directly if available
+    if (selectedProduct?.glbAsset) {
+      setPreCombinedUrl(selectedProduct.glbAsset);
+      setAvatarUrl('');
+      setApparelUrl('');
+    } else {
+      // Reset if no product selected
+      setPreCombinedUrl('');
+      setAvatarUrl('');
+      setApparelUrl('');
+    }
+  }, [selectedProduct]);
 
   useEffect(() => {
     const result = getSizeRecommendation(

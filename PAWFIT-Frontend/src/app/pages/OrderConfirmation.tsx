@@ -4,7 +4,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Order } from '../types';
 import { CheckCircle } from 'lucide-react';
-import { ordersAPI, assets3DAPI } from '../services/api';
+import { ordersAPI } from '../services/api';
 import { Model3DViewer } from '../components/Model3DViewer';
 import { normalizeOrder } from '../utils/dataMappers';
 
@@ -13,7 +13,6 @@ export function OrderConfirmation() {
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [orderItem3DModels, setOrderItem3DModels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -34,40 +33,6 @@ export function OrderConfirmation() {
 
     loadOrder();
   }, [id]);
-
-  // Load 3D models for order items
-  useEffect(() => {
-    const load3DModels = async () => {
-      if (!order) return;
-      
-      const models: Record<string, string> = {};
-      
-      for (const item of order.items) {
-        const key = `${item.product.id}-${item.size}`;
-        
-        try {
-          // Try to find pre-combined models for this product
-          const assets = await assets3DAPI.getAssets({
-            type: 'pre-combined',
-            productId: item.product.id
-          });
-
-          if (Array.isArray(assets) && assets.length > 0) {
-            models[key] = assets[0].fileUrl;
-          } else if (item.product.glbAsset) {
-            // Fall back to product's own GLB asset
-            models[key] = item.product.glbAsset;
-          }
-        } catch (err) {
-          console.log(`Could not load 3D model for product ${item.product.id}`);
-        }
-      }
-      
-      setOrderItem3DModels(models);
-    };
-
-    load3DModels();
-  }, [order]);
 
   if (loading) {
     return (
@@ -131,7 +96,6 @@ export function OrderConfirmation() {
             <div className="space-y-4">
               {order.items.map((item) => {
                 const key = `${item.product.id}-${item.size}`;
-                const modelUrl = orderItem3DModels[key];
                 
                 return (
                   <div key={key} className="border-b pb-4">
@@ -142,10 +106,10 @@ export function OrderConfirmation() {
                       <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                     </div>
                     
-                    {modelUrl && (
+                    {item.product.glbAsset && (
                       <div className="mt-2 rounded-lg overflow-hidden border border-[#E8E4DF]">
                         <Model3DViewer
-                          modelUrl={modelUrl}
+                          modelUrl={item.product.glbAsset}
                           scale={1}
                           autoRotate={true}
                           className="w-full h-32"

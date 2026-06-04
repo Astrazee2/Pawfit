@@ -273,8 +273,14 @@ export function ProductManagement() {
             </div>
 
             <div>
-              <Label htmlFor="glbAsset">3D GLB Asset Link</Label>
-              <Input id="glbAsset" value={formData.glbAsset} onChange={(e) => setFormData({ ...formData, glbAsset: e.target.value })} />
+              <Label htmlFor="glbAsset">3D GLB File Path</Label>
+              <Input 
+                id="glbAsset" 
+                value={formData.glbAsset} 
+                onChange={(e) => setFormData({ ...formData, glbAsset: e.target.value })}
+                placeholder="/models/labrador-blue-shirt.glb"
+              />
+              <p className="text-xs text-gray-600 mt-1">Enter the GLB file path: <code className="bg-gray-100 px-1 rounded">/models/filename.glb</code></p>
             </div>
 
             <button onClick={handleSave} className="w-full px-4 py-2 bg-[#5C3D2E] hover:bg-[#4A3024] text-white rounded-xl font-medium transition-colors">

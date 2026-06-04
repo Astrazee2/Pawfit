@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ShippingInfo } from '../types';
 import { toast } from 'sonner';
-import { ordersAPI, assets3DAPI } from '../services/api';
+import { ordersAPI } from '../services/api';
 import { Model3DViewer } from '../components/Model3DViewer';
 import { Loader2 } from 'lucide-react';
 
@@ -32,7 +32,6 @@ export function Checkout() {
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paypalReady, setPaypalReady] = useState(false);
-  const [cartItem3DModels, setCartItem3DModels] = useState<Record<string, string>>({});
 
   // Load PayPal SDK
   useEffect(() => {
@@ -48,40 +47,6 @@ export function Checkout() {
       setPaypalReady(true);
     }
   }, []);
-
-  // Load 3D models for cart items
-  useEffect(() => {
-    const load3DModels = async () => {
-      const models: Record<string, string> = {};
-      
-      for (const item of cart) {
-        const key = `${item.product.id}-${item.size}`;
-        
-        try {
-          // Try to find pre-combined models for this product
-          const assets = await assets3DAPI.getAssets({
-            type: 'pre-combined',
-            productId: item.product.id
-          });
-
-          if (Array.isArray(assets) && assets.length > 0) {
-            models[key] = assets[0].fileUrl;
-          } else if (item.product.glbAsset) {
-            // Fall back to product's own GLB asset
-            models[key] = item.product.glbAsset;
-          }
-        } catch (err) {
-          console.log(`Could not load 3D model for product ${item.product.id}`);
-        }
-      }
-      
-      setCartItem3DModels(models);
-    };
-
-    if (cart.length > 0) {
-      load3DModels();
-    }
-  }, [cart]);
 
   const handleCreateOrder = async () => {
     if (!shippingInfo.name || !shippingInfo.address || !shippingInfo.contactNumber) {
@@ -274,7 +239,6 @@ export function Checkout() {
               <div className="space-y-4">
                 {cart.map((item) => {
                   const key = `${item.product.id}-${item.size}`;
-                  const modelUrl = cartItem3DModels[key];
                   
                   return (
                     <div key={key} className="border-b pb-4">
@@ -285,10 +249,10 @@ export function Checkout() {
                         <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                       </div>
                       
-                      {modelUrl && (
+                      {item.product.glbAsset && (
                         <div className="mt-2 rounded-lg overflow-hidden border border-[#E8E4DF]">
                           <Model3DViewer
-                            modelUrl={modelUrl}
+                            modelUrl={item.product.glbAsset}
                             scale={1}
                             autoRotate={true}
                             className="w-full h-32"

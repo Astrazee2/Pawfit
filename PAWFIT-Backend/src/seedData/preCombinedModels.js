@@ -11,6 +11,10 @@
  */
 
 // Sample pre-combined models data
+// NOTE: This file is no longer used.
+// GLB files are now served directly from /public/models/ folder
+// and referenced via product.glbAsset field
+
 const samplePreCombinedModels = [
   // Labrador Retriever Models
   {
