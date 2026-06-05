@@ -209,6 +209,7 @@ export function DogAvatar3D({
   const getBreedColor = (breed: Breed): string => {
     const colors: Record<Breed, string> = {
       'Labrador Retriever': '#8B6F47',
+      'Shih Tzu': '#D8C2A8',
       'Dachshund': '#A0826D',
       'Pomeranian': '#C4A472',
       'Aspin/Mixed': '#9B8B7E'

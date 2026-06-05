@@ -30,6 +30,7 @@ app.use('/api/cart', cartRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/assets-3d', assets3DRoutes)
+app.use('/api/assets3d', assets3DRoutes)
 
 
 // Test route

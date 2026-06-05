@@ -10,7 +10,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { petsAPI } from '../services/api';
 
-const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 
 const normalizePet = (pet: any): PetProfile => ({
   id: pet.id ?? pet._id ?? '',
@@ -230,7 +230,7 @@ export function PetProfiles() {
 
             <div>
             <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-md mb-4">
-              Measurements are optional but recommended for a more accurate size recommendation.
+              Measurements are optional and can help you visually compare fit in the 3D preview.
             </p>
             <Label htmlFor="backLength">Back Length (cm) <span className="text-gray-400 text-xs font-normal">optional</span></Label>
             <Input

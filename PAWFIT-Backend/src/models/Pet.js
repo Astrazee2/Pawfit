@@ -13,7 +13,7 @@ const petSchema = new mongoose.Schema({
   },
   breed: {
     type: String,
-    enum: ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'],
+    enum: ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'],
     required: true
   },
   backLength: {

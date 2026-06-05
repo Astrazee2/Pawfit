@@ -58,7 +58,7 @@ export const getAssetsByTypeAndBreed = async (req, res) => {
 // Create 3D asset (admin only)
 export const createAsset = async (req, res) => {
   try {
-    const { name, description, type, breed, apparelType, productId, fileUrl, fileName, fileSize, format, thumbnailUrl, scale, position, rotation, tags, compatible } = req.body
+    const { name, description, type, breed, apparelType, productId, fileUrl, fileName, fileSize, format, thumbnailUrl, scale, position, rotation, tags, compatible, preCombinedInfo } = req.body
 
     const asset = await Asset3D.create({
       name,
@@ -77,7 +77,8 @@ export const createAsset = async (req, res) => {
       rotation: rotation || { x: 0, y: 0, z: 0 },
       uploadedBy: req.user.id,
       tags,
-      compatible
+      compatible,
+      preCombinedInfo
     })
 
     res.status(201).json(asset)
@@ -89,11 +90,11 @@ export const createAsset = async (req, res) => {
 // Update 3D asset (admin only)
 export const updateAsset = async (req, res) => {
   try {
-    const { name, description, scale, position, rotation, tags, compatible, isActive } = req.body
+    const { name, description, scale, position, rotation, tags, compatible, isActive, preCombinedInfo } = req.body
 
     const asset = await Asset3D.findByIdAndUpdate(
       req.params.id,
-      { name, description, scale, position, rotation, tags, compatible, isActive },
+      { name, description, scale, position, rotation, tags, compatible, isActive, preCombinedInfo },
       { new: true }
     )
 

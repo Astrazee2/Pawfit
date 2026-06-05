@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { productsAPI } from '../services/api';
 import { Product, Size } from '../types';
 import { normalizeProduct } from '../utils/dataMappers';
+import { Asset3DModel, modelsAPI } from '../services/models';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Model3DViewer } from '../components/Model3DViewer';
@@ -19,6 +20,8 @@ export function ProductDetail() {
   const { isAuthenticated } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<Size | null>(null);
+  const [modelAsset, setModelAsset] = useState<Asset3DModel | null>(null);
+  const [modelLoading, setModelLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,6 +59,26 @@ export function ProductDetail() {
 
     loadProduct();
   }, [id]);
+
+  useEffect(() => {
+    if (!product?.id) {
+      setModelAsset(null);
+      return;
+    }
+
+    const loadModel = async () => {
+      setModelLoading(true);
+      try {
+        setModelAsset(await modelsAPI.getModelByProductId(product.id));
+      } catch (err) {
+        setModelAsset(null);
+      } finally {
+        setModelLoading(false);
+      }
+    };
+
+    loadModel();
+  }, [product?.id]);
 
   if (loading) {
     return (
@@ -98,6 +121,8 @@ export function ProductDetail() {
     navigate(`/try-on?product=${product.id}`);
   };
 
+  const previewModelUrl = modelAsset?.fileUrl || product.glbAsset || '';
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Button variant="ghost" onClick={() => navigate('/products')} className="mb-4">
@@ -106,12 +131,16 @@ export function ProductDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div>
-          {product.glbAsset ? (
+          {modelLoading ? (
+            <div className="aspect-square bg-[#FAF7F2] rounded-lg mb-4 flex items-center justify-center">
+              <p className="text-sm text-[#6B5D56]">Checking 3D preview...</p>
+            </div>
+          ) : previewModelUrl ? (
             <div className="mb-4">
               <div className="text-sm font-medium text-[#5C3D2E] mb-2">3D Preview</div>
               <Model3DViewer
-                modelUrl={product.glbAsset}
-                scale={1}
+                modelUrl={previewModelUrl}
+                scale={modelAsset?.scale ?? 1}
                 autoRotate={true}
                 className="w-full h-96 lg:h-full"
               />

@@ -22,7 +22,7 @@ type ProductForm = {
 };
 
 const apparelTypes: ApparelType[] = ['Shirt', 'Coat', 'Sweater', 'Hoodie'];
-const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 const sizes: Size[] = ['XS', 'S', 'M', 'L', 'XL'];
 const initialForm: ProductForm = {
   name: '',

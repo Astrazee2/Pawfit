@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { ShippingInfo } from '../types';
 import { toast } from 'sonner';
 import { ordersAPI } from '../services/api';
-import { Model3DViewer } from '../components/Model3DViewer';
+import { Product3DPreview } from '../components/Product3DPreview';
 import { Loader2 } from 'lucide-react';
 
 declare global {
@@ -249,16 +249,9 @@ export function Checkout() {
                         <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                       </div>
                       
-                      {item.product.glbAsset && (
-                        <div className="mt-2 rounded-lg overflow-hidden border border-[#E8E4DF]">
-                          <Model3DViewer
-                            modelUrl={item.product.glbAsset}
-                            scale={1}
-                            autoRotate={true}
-                            className="w-full h-32"
-                          />
-                        </div>
-                      )}
+                      <div className="mt-2">
+                        <Product3DPreview product={item.product} className="w-full h-32" showMissing />
+                      </div>
                     </div>
                   );
                 })}

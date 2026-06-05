@@ -53,7 +53,7 @@ interface AssetForm {
   preCombinedApparelName?: string;
 }
 
-const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
+const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 const apparelTypes: ApparelType[] = ['Shirt', 'Coat', 'Sweater', 'Hoodie'];
 
 const initialForm: AssetForm = {
@@ -450,11 +450,6 @@ export function AssetManagement() {
                   >
                     {breeds.map(breed => (
                       <option key={breed} value={breed}>{breed}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
                     ))}
                   </select>
                 </div>

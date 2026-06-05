@@ -3,6 +3,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { Product3DPreview } from '../components/Product3DPreview';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 
 export function Cart() {
@@ -37,7 +38,9 @@ export function Cart() {
             <Card key={`${item.product.id}-${item.size}`}>
               <CardContent className="p-6">
                 <div className="flex gap-6">
-                  <div className="w-24 h-24 bg-gray-200 rounded flex-shrink-0"></div>
+                  <div className="w-24 h-24 flex-shrink-0">
+                    <Product3DPreview product={item.product} className="w-24 h-24" showMissing />
+                  </div>
 
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg mb-1">{item.product.name}</h3>

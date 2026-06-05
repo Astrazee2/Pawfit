@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -6,33 +6,15 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { DogAvatar3D } from '../components/DogAvatar3D';
-import { AvatarWithApparel } from '../components/AvatarWithApparel';
 import { Model3DViewer } from '../components/Model3DViewer';
-import { ApparelType, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
+import { Breed, Measurements, PetProfile, Product, Size } from '../types';
 import { productsAPI, petsAPI } from '../services/api';
-import { getSizeRecommendation } from '../utils/sizeRecommendation';
+import { Asset3DModel, modelsAPI } from '../services/models';
+import { normalizeProduct } from '../utils/dataMappers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
-import { RotateCcw, ZoomIn, ZoomOut, Check, AlertTriangle, Ruler as RulerIcon } from 'lucide-react';
-
-type BackendProduct = {
-  _id?: string;
-  id?: string;
-  name?: string;
-  description?: string;
-  price?: number;
-  type?: string;
-  apparelType?: ApparelType;
-  breedCompatibility?: Breed[];
-  sizes?: Size[];
-  sizesAvailable?: Size[];
-  imageUrl?: string;
-  images?: string[];
-  glbAssetUrl?: string;
-  glbAsset?: string;
-  message?: string;
-};
+import { PackageOpen, RotateCcw, ShoppingCart, ZoomIn, ZoomOut } from 'lucide-react';
 
 type BackendPet = {
   _id?: string;
@@ -45,30 +27,7 @@ type BackendPet = {
   measurements?: Measurements;
 };
 
-const breeds: Breed[] = ['Labrador Retriever', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
-
-const apparelTypeLabels: Record<string, ApparelType> = {
-  shirt: 'Shirt',
-  coat: 'Coat',
-  sweater: 'Sweater',
-  hoodie: 'Hoodie',
-  Shirt: 'Shirt',
-  Coat: 'Coat',
-  Sweater: 'Sweater',
-  Hoodie: 'Hoodie',
-};
-
-const normalizeProduct = (product: BackendProduct): Product => ({
-  id: product.id ?? product._id ?? '',
-  name: product.name ?? 'Untitled Product',
-  description: product.description ?? '',
-  price: product.price ?? 0,
-  apparelType: apparelTypeLabels[product.apparelType ?? product.type ?? 'shirt'] ?? 'Shirt',
-  breedCompatibility: product.breedCompatibility ?? [],
-  sizesAvailable: product.sizesAvailable ?? product.sizes ?? [],
-  images: product.images ?? (product.imageUrl ? [product.imageUrl] : []),
-  glbAsset: product.glbAsset ?? product.glbAssetUrl,
-});
+const breeds: Breed[] = ['Labrador Retriever', 'Shih Tzu', 'Dachshund', 'Pomeranian', 'Aspin/Mixed'];
 
 const normalizePet = (pet: BackendPet): PetProfile => ({
   id: pet.id ?? pet._id ?? '',
@@ -81,31 +40,49 @@ const normalizePet = (pet: BackendPet): PetProfile => ({
   },
 });
 
+const emptyMeasurements: Measurements = {
+  backLength: 0,
+  neckGirth: 0,
+  chestGirth: 0,
+};
+
 export function VirtualFitting() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { user, isAuthenticated, updatePetProfiles } = useAuth();
 
   const [selectedBreed, setSelectedBreed] = useState<Breed>('Labrador Retriever');
-  const [measurements, setMeasurements] = useState<Measurements>({
-    backLength: 0,
-    neckGirth: 0,
-    chestGirth: 0,
-  });
-  const [recommendation, setRecommendation] = useState<SizeRecommendation | null>(null);
+  const [selectedPetId, setSelectedPetId] = useState('');
+  const [measurements, setMeasurements] = useState<Measurements>(emptyMeasurements);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [productLoading, setProductLoading] = useState(false);
   const [productError, setProductError] = useState('');
+  const [modelAsset, setModelAsset] = useState<Asset3DModel | null>(null);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelError, setModelError] = useState('');
   const [petProfilesLoaded, setPetProfilesLoaded] = useState(false);
   const [viewAngle, setViewAngle] = useState<'front' | 'side' | 'back' | 'top'>('front');
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
-  const [apparelUrl, setApparelUrl] = useState<string>('');
-  const [preCombinedUrl, setPreCombinedUrl] = useState<string>('');
-  const [loadingAssets, setLoadingAssets] = useState(false);
 
   const productId = searchParams.get('product');
   const petProfiles = user?.petProfiles ?? [];
+  const modelUrl = modelAsset?.fileUrl || selectedProduct?.glbAsset || '';
+
+  const compatibleProducts = useMemo(() => {
+    return products.filter(product => product.breedCompatibility.length === 0 || product.breedCompatibility.includes(selectedBreed));
+  }, [products, selectedBreed]);
+
+  const selectableProducts = useMemo(() => {
+    if (!selectedProduct || compatibleProducts.some(product => product.id === selectedProduct.id)) {
+      return compatibleProducts;
+    }
+
+    return [selectedProduct, ...compatibleProducts];
+  }, [compatibleProducts, selectedProduct]);
 
   useEffect(() => {
     if (!isAuthenticated || petProfiles.length > 0 || petProfilesLoaded) {
@@ -116,7 +93,7 @@ export function VirtualFitting() {
       try {
         const data = await petsAPI.getPets();
         if (Array.isArray(data)) {
-          updatePetProfiles(data.map(normalizePet));
+          updatePetProfiles(data.map(normalizePet).filter(pet => pet.id));
         }
       } catch (err) {
         toast.error('Unable to load saved pet profiles');
@@ -129,45 +106,48 @@ export function VirtualFitting() {
   }, [isAuthenticated, petProfiles.length, petProfilesLoaded, updatePetProfiles]);
 
   useEffect(() => {
-    if (petProfiles.length > 0) {
+    if (petProfiles.length > 0 && !selectedPetId) {
       const firstPet = petProfiles[0];
+      setSelectedPetId(firstPet.id);
       setSelectedBreed(firstPet.breed);
-      setMeasurements(firstPet.measurements ?? { backLength: 0, neckGirth: 0, chestGirth: 0 });
+      setMeasurements(firstPet.measurements ?? emptyMeasurements);
     }
-  }, [petProfiles]);
-
-  // Load 3D model from product
-  useEffect(() => {
-    setLoadingAssets(false);
-    
-    // Use product's GLB asset directly if available
-    if (selectedProduct?.glbAsset) {
-      setPreCombinedUrl(selectedProduct.glbAsset);
-      setAvatarUrl('');
-      setApparelUrl('');
-    } else {
-      // Reset if no product selected
-      setPreCombinedUrl('');
-      setAvatarUrl('');
-      setApparelUrl('');
-    }
-  }, [selectedProduct]);
+  }, [petProfiles, selectedPetId]);
 
   useEffect(() => {
-    const result = getSizeRecommendation(
-      selectedBreed,
-      measurements.backLength,
-      measurements.neckGirth,
-      measurements.chestGirth
-    );
-    setRecommendation(result);
-  }, [selectedBreed, measurements]);
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsError('');
+
+      try {
+        const data = await productsAPI.getProducts();
+        if (!Array.isArray(data)) {
+          throw new Error(data?.message || 'Unable to load products');
+        }
+        setProducts(data.map(normalizeProduct).filter(product => product.id));
+      } catch (err) {
+        setProductsError(err instanceof Error ? err.message : 'Unable to load products');
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     if (!productId) {
       setSelectedProduct(null);
+      setSelectedSize(null);
       setProductError('');
       setProductLoading(false);
+      return;
+    }
+
+    const listProduct = products.find(product => product.id === productId);
+    if (listProduct) {
+      setSelectedProduct(listProduct);
+      setSelectedSize(listProduct.sizesAvailable[0] ?? null);
       return;
     }
 
@@ -177,19 +157,15 @@ export function VirtualFitting() {
 
       try {
         const data = await productsAPI.getProductById(productId);
-
-        if (data?.message && !data?._id && !data?.id) {
-          throw new Error(data.message);
-        }
-
         const product = normalizeProduct(data);
         if (!product.id) {
           throw new Error('Product not found');
         }
-
         setSelectedProduct(product);
+        setSelectedSize(product.sizesAvailable[0] ?? null);
       } catch (err) {
         setSelectedProduct(null);
+        setSelectedSize(null);
         setProductError(err instanceof Error ? err.message : 'Unable to load selected product');
       } finally {
         setProductLoading(false);
@@ -197,21 +173,74 @@ export function VirtualFitting() {
     };
 
     loadProduct();
-  }, [productId]);
+  }, [productId, products]);
 
-  const handleGetRecommendation = () => {
-    const result = getSizeRecommendation(
-      selectedBreed,
-      measurements.backLength,
-      measurements.neckGirth,
-      measurements.chestGirth
-    );
-    setRecommendation(result);
+  useEffect(() => {
+    if (!selectedProduct) {
+      setModelAsset(null);
+      setModelError('');
+      setModelLoading(false);
+      return;
+    }
+
+    const loadPreCombinedModel = async () => {
+      setModelLoading(true);
+      setModelError('');
+
+      try {
+        const asset = await modelsAPI.getPreCombinedModel({
+          breed: selectedBreed,
+          apparelType: selectedProduct.apparelType,
+          productId: selectedProduct.id,
+        });
+
+        setModelAsset(asset);
+
+        if (!asset && !selectedProduct.glbAsset) {
+          setModelError('No pre-combined 3D model is available for this breed and product yet.');
+        }
+      } catch (err) {
+        setModelAsset(null);
+        setModelError(err instanceof Error ? err.message : 'Unable to load the 3D model');
+      } finally {
+        setModelLoading(false);
+      }
+    };
+
+    loadPreCombinedModel();
+  }, [selectedBreed, selectedProduct]);
+
+  const handlePetProfileChange = (petId: string) => {
+    setSelectedPetId(petId);
+    const pet = petProfiles.find(profile => profile.id === petId);
+    if (!pet) return;
+
+    setSelectedBreed(pet.breed);
+    setMeasurements(pet.measurements ?? emptyMeasurements);
   };
 
-  const handleAddToCart = () => {
-    if (!recommendation || !selectedProduct) {
-      toast.error('Please get a size recommendation first');
+  const handleProductChange = (productId: string) => {
+    if (!productId) {
+      setSelectedProduct(null);
+      setSelectedSize(null);
+      setSearchParams({});
+      return;
+    }
+
+    const product = products.find(item => item.id === productId) ?? null;
+    setSelectedProduct(product);
+    setSelectedSize(product?.sizesAvailable[0] ?? null);
+    setSearchParams({ product: productId });
+  };
+
+  const handleAddToCart = async () => {
+    if (!selectedProduct) {
+      toast.error('Please select a product first');
+      return;
+    }
+
+    if (!selectedSize) {
+      toast.error('Please select a size');
       return;
     }
 
@@ -221,41 +250,17 @@ export function VirtualFitting() {
       return;
     }
 
-    addToCart(selectedProduct, recommendation.size);
-    toast.success('Added to cart!');
-  };
-
-  const getConfidenceBadge = (confidence: FitConfidence) => {
-    switch (confidence) {
-      case 'Good Fit':
-        return (
-          <Badge className="bg-[#7A9D7A] hover:bg-[#6A8D6A] text-white">
-            
-            <Check className="w-4 h-4 mr-1" />
-            Good Fit
-          </Badge>
-        );
-      case 'Check Fit':
-        return (
-          <Badge className="bg-[#D4A574] hover:bg-[#C49564] text-white">
-            <AlertTriangle className="w-4 h-4 mr-1" />
-            Check Fit
-          </Badge>
-        );
-      case 'Custom Fit Recommended':
-        return (
-          <Badge className="bg-[#B85C5C] hover:bg-[#A84C4C] text-white">
-            <RulerIcon className="w-4 h-4 mr-1" />
-            Custom Fit Recommended
-          </Badge>
-        );
+    try {
+      await addToCart(selectedProduct, selectedSize);
+      toast.success('Added to cart');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to add item to cart');
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
-        
         3D Virtual Fitting
       </h1>
 
@@ -263,51 +268,33 @@ export function VirtualFitting() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>
-                {selectedProduct ? '👗 Virtual Try-On' : '🐕 3D Avatar Preview'}
-              </CardTitle>
+              <CardTitle>{selectedProduct ? 'Virtual Try-On' : '3D Preview'}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="aspect-square rounded-lg mb-4 overflow-hidden">
-                {loadingAssets ? (
-                  <div className="w-full h-full bg-[#FAF7F2] flex items-center justify-center">
+              <div className="aspect-square rounded-lg mb-4 overflow-hidden bg-[#FAF7F2]">
+                {modelLoading || productLoading ? (
+                  <div className="w-full h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="animate-spin mb-2">
-                        <div className="w-8 h-8 border-4 border-[#C4714A] border-t-transparent rounded-full"></div>
-                      </div>
-                      <p className="text-sm text-[#6B5D56]">Loading 3D models...</p>
+                      <div className="w-8 h-8 border-4 border-[#C4714A] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-sm text-[#6B5D56]">Loading 3D model...</p>
                     </div>
                   </div>
-                ) : preCombinedUrl ? (
-                  // Display pre-combined model
+                ) : modelUrl ? (
                   <Model3DViewer
-                    modelUrl={preCombinedUrl}
-                    scale={1}
+                    modelUrl={modelUrl}
+                    scale={modelAsset?.scale ?? 1}
                     autoRotate={true}
                     className="w-full h-full"
                   />
-                ) : avatarUrl ? (
-                  selectedProduct ? (
-                    <AvatarWithApparel
-                      avatarUrl={avatarUrl}
-                      apparelUrl={apparelUrl}
-                      breed={selectedBreed}
-                      scale={1}
-                      apparelScale={1}
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <Model3DViewer
-                      modelUrl={avatarUrl}
-                      scale={1}
-                      autoRotate={true}
-                      className="w-full h-full"
-                    />
-                  )
-                ) : (
-                  <div className="w-full h-full bg-[#FAF7F2] flex items-center justify-center">
-                    <p className="text-sm text-[#6B5D56]">No 3D avatar available for {selectedBreed}</p>
+                ) : selectedProduct ? (
+                  <div className="w-full h-full flex items-center justify-center px-6 text-center">
+                    <div>
+                      <PackageOpen className="w-12 h-12 mx-auto mb-3 text-[#C4714A]" />
+                      <p className="text-sm text-[#6B5D56]">{modelError || 'No pre-combined 3D model found for this selection.'}</p>
+                    </div>
                   </div>
+                ) : (
+                  <DogAvatar3D breed={selectedBreed} viewAngle={viewAngle} />
                 )}
               </div>
 
@@ -324,10 +311,32 @@ export function VirtualFitting() {
                 </Button>
               </div>
 
+              <div className="flex justify-center gap-2 mt-4">
+                {(['front', 'side', 'back', 'top'] as const).map(angle => (
+                  <Button
+                    key={angle}
+                    size="sm"
+                    variant={viewAngle === angle ? 'default' : 'outline'}
+                    onClick={() => setViewAngle(angle)}
+                    className={viewAngle === angle ? 'bg-[#5C3D2E]' : 'border-[#5C3D2E] text-[#5C3D2E]'}
+                  >
+                    {angle.charAt(0).toUpperCase() + angle.slice(1)}
+                  </Button>
+                ))}
+              </div>
+
               {selectedProduct && (
                 <div className="mt-4 p-3 bg-[#FFF5E1] border border-[#FFDBB3] rounded-lg">
-                  <p className="text-xs text-[#5C3D2E] font-medium">
-                    💡 Tip: Drag to rotate • Scroll to zoom • Double-click to reset
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+                    <p className="text-[#5C3D2E] font-medium">
+                      {selectedBreed} wearing {selectedProduct.name}
+                    </p>
+                    <Badge variant="outline" className="w-fit border-[#C4714A] text-[#5C3D2E]">
+                      Size {selectedSize ?? 'not selected'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[#6B5D56] mt-2">
+                    Drag to rotate and zoom the pre-combined model. Measurements are saved as reference only.
                   </p>
                 </div>
               )}
@@ -345,32 +354,43 @@ export function VirtualFitting() {
             </Card>
           )}
 
-          {productLoading && (
+          {(productError || productsError) && (
             <Card>
               <CardContent className="py-4">
-                <p className="text-sm text-[#6B5D56]">Loading selected product...</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {productError && (
-            <Card>
-              <CardContent className="py-4">
-                <p className="text-sm text-[#8B4A4A]">{productError}</p>
+                <p className="text-sm text-[#8B4A4A]">{productError || productsError}</p>
               </CardContent>
             </Card>
           )}
 
           <Card>
             <CardHeader>
-              <CardTitle>Step 1: Select Breed</CardTitle>
+              <CardTitle>Step 1: Select Pet or Breed</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {petProfiles.length > 0 && (
+                <div>
+                  <Label htmlFor="petProfile">Pet Profile</Label>
+                  <select
+                    id="petProfile"
+                    value={selectedPetId}
+                    onChange={(e) => handlePetProfileChange(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    {petProfiles.map(pet => (
+                      <option key={pet.id} value={pet.id}>{pet.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 {breeds.map(breed => (
                   <button
                     key={breed}
-                    onClick={() => setSelectedBreed(breed)}
+                    onClick={() => {
+                      setSelectedBreed(breed);
+                      setSelectedPetId('');
+                    }}
                     className={`p-3 border-2 rounded-lg text-sm transition-colors ${
                       selectedBreed === breed
                         ? 'border-teal-600 bg-teal-50 text-teal-600'
@@ -386,7 +406,7 @@ export function VirtualFitting() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Step 2: Enter Measurements</CardTitle>
+              <CardTitle>Step 2: Measurements Optional</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -424,53 +444,77 @@ export function VirtualFitting() {
                   onChange={(e) => setMeasurements({ ...measurements, chestGirth: Number(e.target.value) })}
                 />
               </div>
-
-              <Button className="w-full" onClick={handleGetRecommendation}>
-                Get Size Recommendation
-              </Button>
             </CardContent>
           </Card>
 
-          {recommendation && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Step 3: Size Recommendation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2">Recommended Size</p>
-                  <div className="text-4xl font-bold text-[#5C3D2E] mb-3">
-                    {recommendation.size}
-                  </div>
-                  <div className="flex justify-center">
-                    {getConfidenceBadge(recommendation.confidence)}
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 3: Select Product</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="product">Product</Label>
+                <select
+                  id="product"
+                  value={selectedProduct?.id ?? ''}
+                  onChange={(e) => handleProductChange(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  disabled={productsLoading}
+                >
+                  <option value="">{productsLoading ? 'Loading products...' : 'Select a product'}</option>
+                  {selectableProducts.map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} - {product.apparelType}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedProduct && (
+                <div>
+                  <Label>Size Category</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedProduct.sizesAvailable.map(size => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 border-2 rounded-xl transition-colors ${
+                          selectedSize === size
+                            ? 'border-[#5C3D2E] bg-[#F5EFE7] text-[#5C3D2E]'
+                            : 'border-[#E8E4DF] hover:border-[#5C3D2E]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {recommendation.confidence === 'Check Fit' && (
-                  <p className="text-sm text-[#8B6F47] bg-[#F5EFE7] p-3 rounded-lg border border-[#D4A574]">
-                    Your measurements are close to a size boundary. Consider trying both this size and an adjacent one.
-                  </p>
-                )}
+              {modelAsset && (
+                <p className="text-xs text-[#6B5D56] bg-[#F5EFE7] p-3 rounded-lg border border-[#E8E4DF]">
+                  Loaded model: {modelAsset.name}
+                </p>
+              )}
 
-                {recommendation.confidence === 'Custom Fit Recommended' && (
-                  <p className="text-sm text-[#8B4A4A] bg-[#F5E8E8] p-3 rounded-lg border border-[#B85C5C]">
-                    Your measurements exceed the standard range. We recommend custom sizing for the best fit.
-                  </p>
-                )}
+              {modelError && (
+                <p className="text-xs text-[#8B4A4A] bg-[#F5E8E8] p-3 rounded-lg border border-[#B85C5C]">
+                  {modelError}
+                </p>
+              )}
 
-                {selectedProduct ? (
-                  <Button className="w-full" onClick={handleAddToCart}>
-                    Add to Cart
-                  </Button>
-                ) : (
-                  <Button className="w-full" onClick={() => navigate('/products')}>
-                    Browse Products
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
+              {selectedProduct ? (
+                <Button className="w-full bg-[#5C3D2E] hover:bg-[#4A3024] rounded-xl" onClick={handleAddToCart}>
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Add to Cart
+                </Button>
+              ) : (
+                <Button className="w-full" onClick={() => navigate('/products')}>
+                  Browse Products
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

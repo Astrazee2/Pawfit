@@ -77,7 +77,7 @@ export function Home() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-[#5C3D2E]">Breed-Specific Sizing</h3>
                 <p className="text-[#6B5D56]">
-                  Get accurate size recommendations based on your dog's breed and measurements.
+                  Preview pre-combined 3D models so you can choose the fit visually.
                 </p>
               </CardContent>
             </Card>
