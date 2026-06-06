@@ -1,4 +1,4 @@
-import { ApparelType, Breed, CartItem, Order, OrderStatus, Product, Size } from '../types';
+import { ApparelType, Asset3D, Breed, CartItem, Order, OrderStatus, Product, Size } from '../types';
 
 export type BackendProduct = {
   _id?: string;
@@ -53,6 +53,20 @@ export type BackendCart = {
   message?: string;
 };
 
+export type BackendAsset3D = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  type?: 'product' | 'body' | 'avatar' | 'apparel';
+  breed?: Breed | '';
+  url?: string;
+  fileName?: string;
+  originalName?: string;
+  size?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 const apparelTypeLabels: Record<string, ApparelType> = {
   shirt: 'Shirt',
   coat: 'Coat',
@@ -90,6 +104,19 @@ export const normalizeProduct = (product: BackendProduct | string | null | undef
     glbAsset: product.glbAsset ?? product.glbAssetUrl,
   };
 };
+
+export const normalizeAsset3D = (asset: BackendAsset3D): Asset3D => ({
+  id: asset.id ?? asset._id ?? '',
+  name: asset.name ?? 'Untitled Asset',
+  type: asset.type === 'avatar' ? 'body' : asset.type === 'apparel' ? 'product' : asset.type ?? 'product',
+  breed: asset.breed || undefined,
+  url: asset.url ?? '',
+  fileName: asset.fileName ?? '',
+  originalName: asset.originalName ?? '',
+  size: asset.size ?? 0,
+  createdAt: asset.createdAt ?? new Date().toISOString(),
+  updatedAt: asset.updatedAt,
+});
 
 export const normalizeCartItems = (items: BackendOrderItem[] = []): CartItem[] =>
   items

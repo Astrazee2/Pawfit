@@ -8,6 +8,7 @@ import { Product, Size } from '../types';
 import { normalizeProduct } from '../utils/dataMappers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { DogAvatar3D } from '../components/DogAvatar3D';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -106,7 +107,11 @@ export function ProductDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div>
           <div className="aspect-square bg-gray-200 rounded-lg mb-4 overflow-hidden">
-            {product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />}
+            {product.glbAsset ? (
+              <DogAvatar3D breed={product.breedCompatibility[0] ?? 'Labrador Retriever'} productModelUrl={product.glbAsset} />
+            ) : (
+              product.images[0] && <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+            )}
           </div>
           <div className="grid grid-cols-4 gap-2">
             {(product.images.length ? product.images : ['', '', '', '']).slice(0, 4).map((image, i) => (

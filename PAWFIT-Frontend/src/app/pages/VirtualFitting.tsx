@@ -6,8 +6,9 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { DogAvatar3D } from '../components/DogAvatar3D';
-import { ApparelType, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
-import { productsAPI, petsAPI } from '../services/api';
+import { ApparelType, Asset3D, Breed, FitConfidence, Measurements, PetProfile, Product, Size, SizeRecommendation } from '../types';
+import { assetsAPI, productsAPI, petsAPI } from '../services/api';
+import { normalizeAsset3D } from '../utils/dataMappers';
 import { getSizeRecommendation } from '../utils/sizeRecommendation';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -96,10 +97,24 @@ export function VirtualFitting() {
   const [productLoading, setProductLoading] = useState(false);
   const [productError, setProductError] = useState('');
   const [petProfilesLoaded, setPetProfilesLoaded] = useState(false);
+  const [bodyAssets, setBodyAssets] = useState<Asset3D[]>([]);
   const [viewAngle, setViewAngle] = useState<'front' | 'side' | 'back' | 'top'>('front');
 
   const productId = searchParams.get('product');
   const petProfiles = user?.petProfiles ?? [];
+
+  useEffect(() => {
+    const loadBodyAssets = async () => {
+      try {
+        const data = await assetsAPI.getAssets({ type: 'body' });
+        setBodyAssets(Array.isArray(data) ? data.map(normalizeAsset3D).filter(asset => asset.id && asset.url) : []);
+      } catch (err) {
+        toast.error('Unable to load body 3D assets');
+      }
+    };
+
+    loadBodyAssets();
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || petProfiles.length > 0 || petProfilesLoaded) {
@@ -229,6 +244,8 @@ export function VirtualFitting() {
     }
   };
 
+  const selectedBodyAsset = bodyAssets.find(asset => asset.breed === selectedBreed) ?? bodyAssets.find(asset => !asset.breed);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-4xl font-bold mb-8 text-[#5C3D2E]" style={{ fontFamily: "'DM Serif Display', serif" }}>
@@ -244,7 +261,11 @@ export function VirtualFitting() {
             </CardHeader>
             <CardContent>
               <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
-                <DogAvatar3D breed={selectedBreed} />
+                <DogAvatar3D
+                  breed={selectedBreed}
+                  bodyModelUrl={selectedBodyAsset?.url}
+                  productModelUrl={selectedProduct?.glbAsset}
+                />
               </div>
 
               <div className="flex justify-center gap-2">

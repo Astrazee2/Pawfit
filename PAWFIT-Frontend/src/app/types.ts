@@ -30,6 +30,19 @@ export interface Product {
   glbAsset?: string;
 }
 
+export interface Asset3D {
+  id: string;
+  name: string;
+  type: 'product' | 'body';
+  breed?: Breed;
+  url: string;
+  fileName: string;
+  originalName: string;
+  size: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface CartItem {
   product: Product;
   size: Size;

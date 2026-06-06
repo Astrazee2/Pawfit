@@ -9,6 +9,10 @@ const authHeaders = () => ({
   'Authorization': `Bearer ${getToken()}`
 })
 
+const authUploadHeaders = () => ({
+  'Authorization': `Bearer ${getToken()}`
+})
+
 const jsonOrThrow = async (res: Response) => {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -107,6 +111,41 @@ export const productsAPI = {
 
   deleteProduct: async (id: string) => {
     const res = await fetch(`${BASE_URL}/products/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
+    return jsonOrThrow(res)
+  }
+}
+
+// ==================== 3D ASSETS ====================
+export const assetsAPI = {
+  getAssets: async (filters?: any) => {
+    const params = new URLSearchParams(filters).toString()
+    const res = await fetch(`${BASE_URL}/assets${params ? `?${params}` : ''}`)
+    return jsonOrThrow(res)
+  },
+
+  createAsset: async (assetData: FormData) => {
+    const res = await fetch(`${BASE_URL}/assets`, {
+      method: 'POST',
+      headers: authUploadHeaders(),
+      body: assetData
+    })
+    return jsonOrThrow(res)
+  },
+
+  updateAsset: async (id: string, assetData: FormData) => {
+    const res = await fetch(`${BASE_URL}/assets/${id}`, {
+      method: 'PUT',
+      headers: authUploadHeaders(),
+      body: assetData
+    })
+    return jsonOrThrow(res)
+  },
+
+  deleteAsset: async (id: string) => {
+    const res = await fetch(`${BASE_URL}/assets/${id}`, {
       method: 'DELETE',
       headers: authHeaders()
     })

@@ -4,9 +4,9 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Badge } from '../../components/ui/badge';
-import { Product, ApparelType, Breed, Size } from '../../types';
-import { productsAPI } from '../../services/api';
-import { normalizeProduct } from '../../utils/dataMappers';
+import { Asset3D, Product, ApparelType, Breed, Size } from '../../types';
+import { assetsAPI, productsAPI } from '../../services/api';
+import { normalizeAsset3D, normalizeProduct } from '../../utils/dataMappers';
 import { Plus, Edit, Trash2, PackageOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,6 +40,7 @@ const toBackendType = (type: ApparelType) => type.toLowerCase();
 export function ProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productAssets, setProductAssets] = useState<Asset3D[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductForm>(initialForm);
@@ -58,6 +59,16 @@ export function ProductManagement() {
 
   useEffect(() => {
     loadProducts();
+    const loadProductAssets = async () => {
+      try {
+        const data = await assetsAPI.getAssets({ type: 'product' });
+        setProductAssets(Array.isArray(data) ? data.map(normalizeAsset3D).filter(asset => asset.id && asset.url) : []);
+      } catch (err) {
+        toast.error('Unable to load product 3D assets');
+      }
+    };
+
+    loadProductAssets();
   }, []);
 
   const handleOpenDialog = (product?: Product) => {
@@ -273,8 +284,21 @@ export function ProductManagement() {
             </div>
 
             <div>
-              <Label htmlFor="glbAsset">3D GLB Asset Link</Label>
-              <Input id="glbAsset" value={formData.glbAsset} onChange={(e) => setFormData({ ...formData, glbAsset: e.target.value })} />
+              <Label htmlFor="glbAsset">3D Product/Clothing Model</Label>
+              <select
+                id="glbAsset"
+                value={formData.glbAsset}
+                onChange={(e) => setFormData({ ...formData, glbAsset: e.target.value })}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="">No 3D model selected</option>
+                {productAssets.map(asset => (
+                  <option key={asset.id} value={asset.url}>{asset.name}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Select the clothing GLB for this product. Base pet bodies are managed separately in 3D Asset Management.
+              </p>
             </div>
 
             <button onClick={handleSave} className="w-full px-4 py-2 bg-[#5C3D2E] hover:bg-[#4A3024] text-white rounded-xl font-medium transition-colors">
