@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Plus, Upload, Trash2, Edit, Package } from 'lucide-react';
 import { Breed, ApparelType, Product } from '../../types';
-import { productsAPI } from '../../services/api';
+import { assets3DAPI, productsAPI } from '../../services/api';
 import { toast } from 'sonner';
 
 interface Asset3D {
@@ -45,6 +45,7 @@ interface AssetForm {
   productId?: string;
   fileUrl: string;
   thumbnailUrl: string;
+  assetFile: File | null;
   scale: string;
   compatible: Breed[];
   tags: string;
@@ -65,6 +66,7 @@ const initialForm: AssetForm = {
   productId: undefined,
   fileUrl: '',
   thumbnailUrl: '',
+  assetFile: null,
   scale: '1',
   compatible: [],
   tags: '',
@@ -74,43 +76,7 @@ const initialForm: AssetForm = {
 };
 
 export function AssetManagement() {
-  const [assets, setAssets] = useState<Asset3D[]>([
-    {
-      id: '1',
-      name: 'Labrador Avatar',
-      type: 'avatar',
-      breed: 'Labrador Retriever',
-      fileUrl: 'https://example.com/labrador.glb',
-      fileName: 'labrador.glb',
-      fileSize: 2300000,
-      format: 'glb',
-      uploadDate: '2026-04-15',
-    },
-    {
-      id: '2',
-      name: 'Premium Tee - Shirt',
-      type: 'apparel',
-      apparelType: 'Shirt',
-      fileUrl: 'https://example.com/tee-shirt.glb',
-      fileName: 'tee-shirt.glb',
-      fileSize: 1200000,
-      format: 'glb',
-      uploadDate: '2026-04-16',
-      compatible: ['Labrador Retriever', 'Dachshund'],
-    },
-    {
-      id: '3',
-      name: 'Winter Coat - Coat',
-      type: 'apparel',
-      apparelType: 'Coat',
-      fileUrl: 'https://example.com/winter-coat.glb',
-      fileName: 'winter-coat.glb',
-      fileSize: 1500000,
-      format: 'glb',
-      uploadDate: '2026-04-16',
-      compatible: ['Labrador Retriever', 'Shih Tzu'],
-    },
-  ]);
+  const [assets, setAssets] = useState<Asset3D[]>([]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -120,15 +86,20 @@ export function AssetManagement() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const loadData = async () => {
       try {
-        const data = await productsAPI.getProducts();
-        setProducts(Array.isArray(data) ? data : []);
+        const [productData, assetData] = await Promise.all([
+          productsAPI.getProducts(),
+          assets3DAPI.getAssets(),
+        ]);
+
+        setProducts(Array.isArray(productData) ? productData : []);
+        setAssets(Array.isArray(assetData) ? assetData : []);
       } catch (err) {
-        toast.error('Unable to load products');
+        toast.error('Unable to load products or 3D assets');
       }
     };
-    loadProducts();
+    loadData();
   }, []);
 
   const handleOpenDialog = (asset?: Asset3D) => {
@@ -143,6 +114,7 @@ export function AssetManagement() {
         productId: asset.productId,
         fileUrl: asset.fileUrl,
         thumbnailUrl: asset.thumbnailUrl || '',
+        assetFile: null,
         scale: String(asset.scale || 1),
         compatible: asset.compatible || [],
         tags: '',
@@ -157,7 +129,7 @@ export function AssetManagement() {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.fileUrl) {
+    if (!formData.name) {
       toast.error('Please fill in required fields');
       return;
     }
@@ -179,37 +151,49 @@ export function AssetManagement() {
       }
     }
 
+    if (!editingAsset && !formData.assetFile) {
+      toast.error('Please choose a GLB or GLTF file to upload');
+      return;
+    }
+
     setLoading(true);
     try {
-      // In a real implementation, this would call the backend API
-      const newAsset: Asset3D = {
-        id: editingAsset?.id || String(Date.now()),
-        name: formData.name,
-        description: formData.description,
-        type: formData.type,
-        breed: formData.breed,
-        apparelType: formData.apparelType,
-        productId: formData.productId,
-        fileUrl: formData.fileUrl,
-        fileName: formData.fileUrl.split('/').pop() || 'asset.glb',
-        fileSize: 0,
-        format: 'glb',
-        thumbnailUrl: formData.thumbnailUrl,
-        scale: parseFloat(formData.scale),
-        compatible: formData.compatible,
-        uploadDate: new Date().toISOString().split('T')[0],
-        preCombinedInfo: formData.type === 'pre-combined' ? {
+      const payload = new FormData();
+      payload.append('name', formData.name);
+      payload.append('description', formData.description);
+      payload.append('type', formData.type);
+
+      if (formData.breed) payload.append('breed', formData.breed);
+      if (formData.apparelType) payload.append('apparelType', formData.apparelType);
+      if (formData.productId) payload.append('productId', formData.productId);
+      if (formData.thumbnailUrl) payload.append('thumbnailUrl', formData.thumbnailUrl);
+      if (formData.scale) payload.append('scale', formData.scale);
+      payload.append('compatible', JSON.stringify(formData.compatible));
+      if (formData.tags) payload.append('tags', formData.tags);
+      if (formData.preCombinedDogBreed || formData.preCombinedApparelType || formData.preCombinedApparelName) {
+        payload.append('preCombinedInfo', JSON.stringify({
           dogBreed: formData.preCombinedDogBreed,
           apparelType: formData.preCombinedApparelType,
-          apparelName: formData.preCombinedApparelName
-        } : undefined
-      };
+          apparelName: formData.preCombinedApparelName,
+        }));
+      }
+
+      if (formData.assetFile) {
+        payload.append('assetFile', formData.assetFile);
+      } else if (editingAsset.fileUrl) {
+        payload.append('fileUrl', editingAsset.fileUrl);
+        payload.append('fileName', editingAsset.fileName);
+        payload.append('fileSize', String(editingAsset.fileSize || 0));
+        payload.append('format', editingAsset.format);
+      }
 
       if (editingAsset) {
-        setAssets(assets.map(a => a.id === editingAsset.id ? newAsset : a));
+        const updatedAsset = await assets3DAPI.updateAsset(editingAsset.id, payload);
+        setAssets(assets.map(a => a.id === editingAsset.id ? updatedAsset : a));
         toast.success('Asset updated successfully');
       } else {
-        setAssets([newAsset, ...assets]);
+        const createdAsset = await assets3DAPI.createAsset(payload);
+        setAssets([createdAsset, ...assets]);
         toast.success('Asset uploaded successfully');
       }
 
@@ -222,8 +206,14 @@ export function AssetManagement() {
   };
 
   const handleDelete = (id: string) => {
-    setAssets(assets.filter(a => a.id !== id));
-    toast.success('Asset deleted');
+    assets3DAPI.deleteAsset(id)
+      .then(() => {
+        setAssets(assets.filter(a => a.id !== id));
+        toast.success('Asset deleted');
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to delete asset');
+      });
   };
 
   const toggleCompatibleBreed = (breed: Breed) => {
@@ -455,11 +445,6 @@ export function AssetManagement() {
                 </div>
               )}
             </div>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
 
             {formData.type === 'apparel' && (
               <>
@@ -540,15 +525,16 @@ export function AssetManagement() {
             )}
 
             <div>
-              <Label htmlFor="fileUrl">GLB/glTF File URL *</Label>
+              <Label htmlFor="assetFile">GLB/glTF File {editingAsset ? '' : '*'}</Label>
               <Input
-                id="fileUrl"
-                value={formData.fileUrl}
-                onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-                placeholder="/models/labrador-blue-shirt.glb"
+                id="assetFile"
+                type="file"
+                accept=".glb,.gltf"
+                onChange={(e) => setFormData({ ...formData, assetFile: e.target.files?.[0] || null })}
               />
               <p className="text-xs text-[#6B5D56] mt-1">
-                Backend URL format: <code className="bg-gray-100 px-1 rounded">/models/filename.glb</code> or <code className="bg-gray-100 px-1 rounded">http://localhost:5000/models/filename.glb</code>
+                Upload a `.glb` or `.gltf` file from your computer.
+                {editingAsset && !formData.assetFile && ` Current file: ${editingAsset.fileName}`}
               </p>
             </div>
 

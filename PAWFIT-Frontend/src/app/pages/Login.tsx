@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -95,7 +95,7 @@ export function Login() {
 
             <div className="border-t pt-4 mt-4">
               <p className="text-xs text-gray-500 mb-2">Demo accounts:</p>
-              <p className="text-xs text-gray-600">Admin: admin@pawfit.com / admin</p>
+              <p className="text-xs text-gray-600">Admin: admin@pawfit.com / admin123</p>
             </div>
           </form>
         </CardContent>

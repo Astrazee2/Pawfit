@@ -26,16 +26,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     const loadCart = async () => {
-      const data = await cartAPI.getCart();
-      setCart(normalizeCartItems(data.items));
+      try {
+        const data = await cartAPI.getCart();
+        setCart(normalizeCartItems(data?.items ?? []));
+      } catch (err) {
+        setCart([]);
+      }
     };
 
-    loadCart().catch(() => setCart([]));
+    loadCart();
   }, [isAuthenticated]);
 
   const addToCart = async (product: Product, size: Size) => {
     const data = await cartAPI.addToCart(product.id, size, 1, product.price);
-    setCart(normalizeCartItems(data.items));
+    setCart(normalizeCartItems(data?.items ?? []));
   };
 
   const removeFromCart = async (productId: string, size: Size) => {
@@ -43,7 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!item?.cartItemId) return;
 
     const data = await cartAPI.removeFromCart(item.cartItemId);
-    setCart(normalizeCartItems(data.items));
+    setCart(normalizeCartItems(data?.items ?? []));
   };
 
   const updateQuantity = async (productId: string, size: Size, quantity: number) => {
@@ -56,7 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await cartAPI.updateCartItem(item.cartItemId, quantity);
-    setCart(normalizeCartItems(data.items));
+    setCart(normalizeCartItems(data?.items ?? []));
   };
 
   const clearCart = async () => {

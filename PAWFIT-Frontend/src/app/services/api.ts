@@ -211,20 +211,22 @@ export const assets3DAPI = {
     return jsonOrThrow(res)
   },
 
-  createAsset: async (assetData: any) => {
+  createAsset: async (assetData: FormData | Record<string, any>) => {
+    const isFormData = assetData instanceof FormData
     const res = await fetch(`${BASE_URL}/assets-3d`, {
       method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(assetData)
+      headers: isFormData ? { Authorization: `Bearer ${getToken()}` } : authHeaders(),
+      body: isFormData ? assetData : JSON.stringify(assetData)
     })
     return jsonOrThrow(res)
   },
 
-  updateAsset: async (id: string, assetData: any) => {
+  updateAsset: async (id: string, assetData: FormData | Record<string, any>) => {
+    const isFormData = assetData instanceof FormData
     const res = await fetch(`${BASE_URL}/assets-3d/${id}`, {
       method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(assetData)
+      headers: isFormData ? { Authorization: `Bearer ${getToken()}` } : authHeaders(),
+      body: isFormData ? assetData : JSON.stringify(assetData)
     })
     return jsonOrThrow(res)
   },
