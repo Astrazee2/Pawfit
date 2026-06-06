@@ -1,4 +1,4 @@
-import express from 'express'
+import express from "express";
 import {
   getAssets,
   getAssetById,
@@ -7,26 +7,27 @@ import {
   updateAsset,
   deleteAsset,
   getCompatibleApparel,
-  checkCompatibility
-} from '../controllers/asset3DController.js'
-import protect from '../middleware/auth.js'
+  checkCompatibility,
+} from "../controllers/asset3DController.js";
+import protect from "../middleware/auth.js";
+import upload from "../middleware/uploadAsset.js";
 
-const router = express.Router()
+const router = express.Router();
 
 // Public specific routes (must come before /:id)
-router.get('/type-breed/:type/:breed', getAssetsByTypeAndBreed)
-router.get('/compatible/:breed', getCompatibleApparel)
+router.get("/type-breed/:type/:breed", getAssetsByTypeAndBreed);
+router.get("/compatible/:breed", getCompatibleApparel);
 
 // Compatibility check
-router.post('/check-compatibility', checkCompatibility)
+router.post("/check-compatibility", checkCompatibility);
 
 // General public routes
-router.get('/', getAssets)
-router.get('/:id', getAssetById)
+router.get("/", getAssets);
+router.get("/:id", getAssetById);
 
 // Admin routes
-router.post('/', protect, createAsset)
-router.put('/:id', protect, updateAsset)
-router.delete('/:id', protect, deleteAsset)
+router.post("/", protect, upload.single("assetFile"), createAsset);
+router.put("/:id", protect, upload.single("assetFile"), updateAsset);
+router.delete("/:id", protect, deleteAsset);
 
-export default router
+export default router;
