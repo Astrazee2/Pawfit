@@ -140,9 +140,9 @@ PAWFIT-Backend/
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
 | POST | `/api/orders` | Create an order | ✅ |
-| GET | `/api/orders` | Get user's orders | ✅ |
-| GET | `/api/orders/:id` | Get a single order | ✅ |
-| PUT | `/api/orders/:id/status` | Update order status (admin) | ✅ |
+| GET | `/api/orders` | Get user's orders; admins get all orders | ✅ |
+| GET | `/api/orders/:id` | Get a single order; admins may view any order | ✅ |
+| PUT | `/api/orders/:id/status` | Update order status (admin only) | ✅ |
 
 ---
 

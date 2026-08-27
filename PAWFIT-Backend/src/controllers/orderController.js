@@ -27,8 +27,10 @@ export const createOrder = async (req, res) => {
 // Get user orders
 export const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user.id })
+    const filter = req.user.role === 'admin' ? {} : { user: req.user.id }
+    const orders = await Order.find(filter)
       .populate('items.product')
+      .populate('user', 'name email')
       .sort({ createdAt: -1 })
     res.json(orders)
   } catch (err) {
@@ -39,10 +41,12 @@ export const getOrders = async (req, res) => {
 // Get single order
 export const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user.id
-    }).populate('items.product')
+    const filter = req.user.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, user: req.user.id }
+    const order = await Order.findOne(filter)
+      .populate('items.product')
+      .populate('user', 'name email')
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' })
@@ -57,11 +61,16 @@ export const getOrderById = async (req, res) => {
 // Update order status (admin only)
 export const updateOrderStatus = async (req, res) => {
   try {
+    const allowedStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
+    if (!allowedStatuses.includes(req.body.status)) {
+      return res.status(400).json({ message: 'Invalid order status' })
+    }
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status: req.body.status },
-      { new: true }
-    )
+      { new: true, runValidators: true }
+    ).populate('items.product').populate('user', 'name email')
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' })

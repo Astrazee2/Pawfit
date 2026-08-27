@@ -35,7 +35,7 @@ export function OrderManagement() {
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const updatedOrder = normalizeOrder(await ordersAPI.updateOrderStatus(orderId, toBackendStatus[newStatus]));
-      setOrders(orders.map(order => order.id === orderId ? updatedOrder : order));
+      setOrders(currentOrders => currentOrders.map(order => order.id === orderId ? updatedOrder : order));
       toast.success('Order status updated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to update order');
@@ -51,7 +51,7 @@ export function OrderManagement() {
       </h1>
 
       <div className="mb-6 flex gap-2">
-        {(['All', 'Processing', 'Shipped', 'Delivered'] as const).map((status) => (
+        {(['All', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] as const).map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}

@@ -5,9 +5,13 @@ export const createPet = async (req, res) => {
   try {
     const { name, breed, backLength, neckGirth, chestGirth } = req.body
 
+    if (!name?.trim() || !breed) {
+      return res.status(400).json({ message: 'Pet name and breed are required' })
+    }
+
     const pet = await Pet.create({
       owner: req.user.id,
-      name,
+      name: name.trim(),
       breed,
       backLength,
       neckGirth,
@@ -33,10 +37,11 @@ export const getPets = async (req, res) => {
 // Update pet profile
 export const updatePet = async (req, res) => {
   try {
+    const { name, breed, backLength, neckGirth, chestGirth } = req.body
     const pet = await Pet.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      req.body,
-      { new: true }
+      { name, breed, backLength, neckGirth, chestGirth },
+      { new: true, runValidators: true }
     )
 
     if (!pet) {
