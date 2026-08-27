@@ -110,11 +110,10 @@ export function PetProfiles() {
         updatePetProfiles([...petProfiles, newPet]);
         toast.success('Pet profile created!');
       }
+      setDialogOpen(false);
     } catch (err) {
-      toast.error('Something went wrong. Please try again.');
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
-
-    setDialogOpen(false);
   };
 
   const handleDelete = async (id: string) => {

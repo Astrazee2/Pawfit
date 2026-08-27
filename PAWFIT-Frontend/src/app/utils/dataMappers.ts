@@ -45,6 +45,7 @@ export type BackendOrder = {
     phone?: string;
   };
   shippingInfo?: Order['shippingInfo'];
+  user?: { name?: string; email?: string } | string;
   message?: string;
 };
 
@@ -129,7 +130,9 @@ export const normalizeOrder = (order: BackendOrder): Order => {
     total: order.total ?? order.totalAmount ?? items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
     status: normalizeStatus(order.status),
     shippingInfo: order.shippingInfo ?? {
-      name: order.shippingAddress?.fullName ?? '',
+      name: order.shippingAddress?.fullName
+        ?? (typeof order.user === 'object' ? order.user.name : undefined)
+        ?? '',
       address: [
         order.shippingAddress?.address,
         order.shippingAddress?.city,
